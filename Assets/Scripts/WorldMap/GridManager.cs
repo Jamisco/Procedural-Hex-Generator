@@ -103,8 +103,11 @@ namespace Assets.Scripts.WorldMap
         #region Hex Generation Methods
         public void GenerateGridChunks()
         {
+            hexSettings.ResetVariables();
             timer.Start();
             HexTiles.Clear();
+
+            DestroyChildren();
 
             SetGridSettings();
 

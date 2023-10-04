@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Assets.Scripts.Miscellaneous;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -43,10 +44,14 @@ namespace Assets.Scripts.WorldMap
 
         RenderParams renderParams;
         RenderParams instanceParam;
+
+        GameObject HighlightLayer;
         private void Awake()
         {
             renderParams = new RenderParams(MainMaterial);
             instanceParam = new RenderParams(InstanceMaterial);
+
+            HighlightLayer = gameObject.GetGameObject("HighlightLayer");
         }
 
         public void Initialize(BoundsInt aBounds)
@@ -98,9 +103,9 @@ namespace Assets.Scripts.WorldMap
         {
             subMeshes.Clear();
             hexes = conHexes.ToList();
-            Simplify();
+            CombineMeshes();
         }
-        private void Simplify()
+        private void CombineMeshes()
         {
             Mesh mesh = new Mesh();
 
@@ -188,11 +193,15 @@ namespace Assets.Scripts.WorldMap
                 {
                     // we subtract the position of the chunk because the hexes are positioned relative to the chunk, so if a chunk is at 0,10 and the hex is at 0,0, the hex is actually at 0,10,0 in world position
                     
-                    GetClosestHex(hit.point - transform.position);
+                    HexTile clickedHex = GetClosestHex(hit.point - transform.position);
+
+                    HighlightHex(clickedHex);
 
                 }
             }
         }
+
+        /// Hello this is a change
 
         /// <summary>
         /// Since we combined all of the individual meshes into one, there exist only one collider. THus we need to find the hex that was clicked on base on the position. 
@@ -256,6 +265,32 @@ namespace Assets.Scripts.WorldMap
 
                 return closestHex;
             }
+        }
+
+        bool highlight = true;
+        private void HighlightHex(HexTile hex)
+        {
+            Mesh hMesh = new Mesh();
+            Mesh tMesh = hexSettings.GetOuterHighlighter();
+
+            CombineInstance instance = new CombineInstance();
+            instance.mesh = hexSettings.GetOuterHighlighter();
+
+            instance.transform = Matrix4x4.Translate(hex.Position);
+
+            //HighlightLayer.transform.position = hex.Position;
+
+            CombineInstance[] hee = new CombineInstance[1];
+
+            hee[0] = instance;
+
+            hMesh.CombineMeshes(hee);
+
+            HighlightLayer.transform.position = hex.Position + gameObject.transform.position;
+
+            HighlightLayer.GetComponent<MeshFilter>().mesh = tMesh;
+            HighlightLayer.GetComponent<MeshFilter>().sharedMesh = tMesh;
+
         }
 
         private void SetMaterialProperties()
