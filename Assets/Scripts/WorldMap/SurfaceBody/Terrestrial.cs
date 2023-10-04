@@ -109,7 +109,7 @@ namespace Assets.Scripts.WorldMap.Biosphere
             float temp = grid.Temperature;
             float precip = grid.Precipitation;
 
-            return GetBiomeProperties(GetBiome(temp, precip));
+            return GetBiomeProperties(GetBiome(temp, precip)); // lagging me or you 
         }
 
         public BiomeProperties GetBiomeProperties(Biomes biome)
