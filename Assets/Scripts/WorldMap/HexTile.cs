@@ -249,11 +249,16 @@ namespace Assets.Scripts.WorldMap
             return z * (hexSettings.outerRadius * 1.5f) + (z * hexSettings.stepDistance);
         }
 
+        /// <summary>
+        /// Be aware that this function is only accurate 80% of the time. Due to the nature of the hex grid, there are some cases where the function will return the wrong value because of offsets. Thus is it recommended to also get the surrounding tiles and check if the tile is actually the closest one.
+        /// </summary>
+        /// <param name="worldPosition"></param>
+        /// <returns></returns>
         public static Vector2Int GetGridCoordinate(Vector3 worldPosition)
         {
             Vector3Int gridCoordinate = Vector3Int.zero;
 
-            float z = worldPosition.z / (hexSettings.outerRadius * 5/3f);
+            float z = worldPosition.z / (hexSettings.outerRadius * 1.5f);
 
             int minZ = Mathf.FloorToInt(z);
             int maxZ = Mathf.CeilToInt(z);

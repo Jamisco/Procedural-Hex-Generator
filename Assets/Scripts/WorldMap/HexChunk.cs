@@ -33,7 +33,7 @@ namespace Assets.Scripts.WorldMap
         public List<HexTile> hexes;
         private ConcurrentBag<HexTile> conHexes;
 
-        public ConcurrentDictionary<Axial, HexTile> hexDictionary = new ConcurrentDictionary<Axial, HexTile>();
+        public ConcurrentDictionary<Vector2Int, HexTile> hexDictionary = new ConcurrentDictionary<Vector2Int, HexTile>();
 
         public List<Material> materials = new List<Material>();
 
@@ -89,7 +89,7 @@ namespace Assets.Scripts.WorldMap
             // thus you can add to it from multiple from threads
 
             conHexes.Add(hex);
-            hexDictionary.TryAdd(hex.AxialCoordinates, hex);
+            hexDictionary.TryAdd(hex.GridCoordinates, hex);
         }
 
         Dictionary<BiomeProperties, List<CombineInstance>> subMeshes = new Dictionary<BiomeProperties, List<CombineInstance>>();
@@ -176,7 +176,6 @@ namespace Assets.Scripts.WorldMap
         {
             CheckMouseEnter();
         }
-
         void CheckMouseEnter()
         {
             if (Input.GetMouseButton(0))
@@ -187,29 +186,75 @@ namespace Assets.Scripts.WorldMap
 
                 if (Physics.Raycast(ray, out hit, 1000))
                 {
-                    GetHexAtPosition(hit.point);
+                    // we subtract the position of the chunk because the hexes are positioned relative to the chunk, so if a chunk is at 0,10 and the hex is at 0,0, the hex is actually at 0,10,0 in world position
+                    
+                    GetClosestHex(hit.point - transform.position);
+
                 }
             }
         }
 
-        private void GetHexAtPosition(Vector3 position)
+        /// <summary>
+        /// Since we combined all of the individual meshes into one, there exist only one collider. THus we need to find the hex that was clicked on base on the position. 
+        /// We do this by getting all the possible grid positions within the vicinity of the mouse click and then we measure between the positions of said grid positions and the mouse click position. The grid position with the smallest distance is the one that was clicked on.
+        /// </summary>
+        /// <param name="position"></param>
+        /// <returns></returns>
+        private HexTile GetClosestHex(Vector3 position)
         {
-            Vector2Int gridPos = GetGridCoordinate(position);
-
-            Axial axePos = Axial.ToAxial(gridPos);
-
-            bool inChunk = IsInChunk(gridPos.x, gridPos.y);
-
+            // average time to find hex is 0.002 seconds
             HexTile hex;
+            List<Vector2Int> possibleGridCoords = new List<Vector2Int>();
 
-            HexTile hex2 = hexes.FirstOrDefault(x => x.GridCoordinates == gridPos);
-            HexTile hex3 = hexes.FirstOrDefault(x => x.AxialCoordinates == axePos);
+            Vector2Int gridPos = GetGridCoordinate(position);
+            possibleGridCoords.Add(gridPos);
 
-            bool hass = hexDictionary.TryGetValue(axePos, out hex);
+            Vector2Int gridPos2 = new Vector2Int(gridPos.x + 1, gridPos.y);
+            Vector2Int gridPos3 = new Vector2Int(gridPos.x - 1, gridPos.y);
+            Vector2Int gridPos4 = new Vector2Int(gridPos.x, gridPos.y + 1);
+            Vector2Int gridPos5 = new Vector2Int(gridPos.x, gridPos.y - 1);
 
-            if (hex != null)
+            possibleGridCoords.Add(gridPos2);
+            possibleGridCoords.Add(gridPos3);
+            possibleGridCoords.Add(gridPos4);
+            possibleGridCoords.Add(gridPos5);
+
+            hex = GetClosestHex(possibleGridCoords, position);
+            //Debug.Log("Hex: " + hex.GridCoordinates.ToString() + " Hit");
+            return hex;
+
+            HexTile GetClosestHex(List<Vector2Int> coords, Vector3 pos)
             {
-                Debug.Log("Hex: " + hex.GridCoordinates.ToString() + " Hit");
+                HexTile closestHex = null;
+
+                float shortestDistance = float.MaxValue;
+
+                HexTile posHex = null;
+                
+                foreach (Vector2Int item in coords)
+                {
+                    posHex = null;
+
+                    hexDictionary.TryGetValue(item, out posHex);
+
+                    if(posHex == null)
+                    {
+                        continue;
+                    }
+
+                    if (posHex != null)
+                    {
+                        float currDistance = Vector3.Distance(posHex.Position, pos);
+
+                        if (currDistance < shortestDistance)
+                        {
+                            shortestDistance = currDistance;
+                            closestHex = posHex;
+                        }
+                    }
+                }
+
+                return closestHex;
             }
         }
 
