@@ -724,7 +724,7 @@ MonoBehaviour:
   InstanceMaterial: {fileID: 2100000, guid: 876cd32450d0f1a48835980ee51786b2, type: 2}
   planetGenerator: {fileID: 1605946132}
   ChunkSize: 0
-  biomeVisual: 1
+  biomeVisual: 0
   UpdateMap: 0
 --- !u!4 &1605946131
 Transform:
