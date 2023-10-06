@@ -21,6 +21,7 @@ using System.Collections.Concurrent;
 using static Assets.Scripts.WorldMap.HexChunk;
 using System.Drawing;
 
+// Namespace.
 namespace Assets.Scripts.WorldMap
 {
     [System.Serializable]
