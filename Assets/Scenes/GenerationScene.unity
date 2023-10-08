@@ -807,7 +807,7 @@ MonoBehaviour:
   planetFractal: 1
   PrintArrays: 0
   RandomBiomeColor: 0
-  LandSeed: 1411
+  LandSeed: 1592
   LandFrequemcy: 0.01
   LFractal: 3
   LNoise: 3

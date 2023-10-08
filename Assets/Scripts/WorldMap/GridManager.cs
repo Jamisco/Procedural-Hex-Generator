@@ -22,6 +22,7 @@ using static Assets.Scripts.WorldMap.HexChunk;
 using System.Drawing;
 
 // Namespace.
+// Kirtan Thakkar
 namespace Assets.Scripts.WorldMap
 {
     [System.Serializable]
