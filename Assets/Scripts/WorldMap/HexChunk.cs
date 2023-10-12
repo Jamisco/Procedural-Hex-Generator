@@ -18,6 +18,7 @@ using Debug = UnityEngine.Debug;
 
 namespace Assets.Scripts.WorldMap
 {
+    // Due to the nature of this class, it will have to work hand in hand with the Gridmanager is order to properly share data. It is recommended that you refrain from doing specific functions that would limit the gridmanager from being able to controlt them. For example, a chunk should not be the one to highlight itself, but rather the gridmanager should be the one to do it. A chunk should not store the data, data about itself that isnt nessacary for it to display its meshes. We should force the Gridmanager to store that.
     [RequireComponent(typeof(MeshFilter))]
     [RequireComponent(typeof(MeshRenderer))]
     [RequireComponent(typeof(MeshCollider))]
@@ -37,6 +38,7 @@ namespace Assets.Scripts.WorldMap
         public ConcurrentDictionary<Vector2Int, HexTile> hexDictionary = new ConcurrentDictionary<Vector2Int, HexTile>();
 
         public List<Material> materials = new List<Material>();
+        List<MaterialPropertyBlock> blocks = new List<MaterialPropertyBlock>();
 
         public Vector2Int StartPosition;
 
@@ -172,44 +174,13 @@ namespace Assets.Scripts.WorldMap
             GetComponent<MeshCollider>().sharedMesh = mesh;
         }
 
-        private void Update()
-        {
-            //CheckMouseEnter();
-        }
-
-        private void OnMouseOver()
-        {
-            CheckMouseEnter();
-        }
-        void CheckMouseEnter()
-        {
-            if (Input.GetMouseButton(0))
-            {
-                Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-
-                RaycastHit hit;
-
-                if (Physics.Raycast(ray, out hit, 1000))
-                {
-                    // we subtract the position of the chunk because the hexes are positioned relative to the chunk, so if a chunk is at 0,10 and the hex is at 0,0, the hex is actually at 0,10,0 in world position
-                    
-                    HexTile clickedHex = GetClosestHex(hit.point - transform.position);
-
-                    HighlightHex(clickedHex);
-
-                }
-            }
-        }
-
-        /// Hello this is a change
-
         /// <summary>
         /// Since we combined all of the individual meshes into one, there exist only one collider. THus we need to find the hex that was clicked on base on the position. 
         /// We do this by getting all the possible grid positions within the vicinity of the mouse click and then we measure between the positions of said grid positions and the mouse click position. The grid position with the smallest distance is the one that was clicked on.
         /// </summary>
         /// <param name="position"></param>
         /// <returns></returns>
-        private HexTile GetClosestHex(Vector3 position)
+        public HexTile GetClosestHex(Vector3 position)
         {
             // average time to find hex is 0.002 seconds
             HexTile hex;
@@ -267,32 +238,30 @@ namespace Assets.Scripts.WorldMap
             }
         }
 
-        bool highlight = true;
-        private void HighlightHex(HexTile hex)
+        // the highlight layer has to be above the base layer.
+        // how high above do u want it to be
+        Vector3 HighlightLayerOffset = new Vector3(0, .001f, 0);
+        public void HighlightHex(HexTile hex)
         {
-            Mesh hMesh = new Mesh();
-            Mesh tMesh = hexSettings.GetOuterHighlighter();
+            // if you want to highlight multiple meshes at once, 
+            // you can use a combine instance lists and simply add hexes accordingly
 
-            CombineInstance instance = new CombineInstance();
-            instance.mesh = hexSettings.GetOuterHighlighter();
+            // additionally, it might prove worthy to store the highlighted Hex for later use
 
-            instance.transform = Matrix4x4.Translate(hex.Position);
+            Mesh HighMesh = hexSettings.GetOuterHighlighter();
 
-            //HighlightLayer.transform.position = hex.Position;
+            HighlightLayer.transform.position = hex.Position + gameObject.transform.position + HighlightLayerOffset;
 
-            CombineInstance[] hee = new CombineInstance[1];
-
-            hee[0] = instance;
-
-            hMesh.CombineMeshes(hee);
-
-            HighlightLayer.transform.position = hex.Position + gameObject.transform.position;
-
-            HighlightLayer.GetComponent<MeshFilter>().mesh = tMesh;
-            HighlightLayer.GetComponent<MeshFilter>().sharedMesh = tMesh;
+            HighlightLayer.GetComponent<MeshFilter>().mesh = HighMesh;
+            HighlightLayer.GetComponent<MeshFilter>().sharedMesh = HighMesh;
 
         }
 
+        public void UnHighlightHex()
+        {
+            HighlightLayer.GetComponent<MeshFilter>().mesh = null;
+            HighlightLayer.GetComponent<MeshFilter>().sharedMesh = null;
+        } 
         private void SetMaterialProperties()
         {
             if (BiomeVisual == BiomeVisual.Color)
@@ -335,7 +304,7 @@ namespace Assets.Scripts.WorldMap
             }
         }
 
-        List<MaterialPropertyBlock> blocks = new List<MaterialPropertyBlock>();
+
         public void SetMaterialPropertyBlocks()
         {
             Renderer renderer = GetComponent<Renderer>();
@@ -354,9 +323,13 @@ namespace Assets.Scripts.WorldMap
             }
         }
 
+        #region The Below is for Gpu Mesh generation, Dont touch unless you know what you are doing
 
         // the limit for graphic instances is 500
-        static int maxLimit = 500;
+        private static int maxLimit = 500;
+        List<List<MyInstanceData>> data2 = new List<List<MyInstanceData>>();
+        List<List<Vector4>> color2 = new List<List<Vector4>>();
+        MyInstanceData[] data;
         public struct MyInstanceData
         {
             public Matrix4x4 objectToWorld; // We must specify object-to-world transformation for each instance
@@ -365,8 +338,6 @@ namespace Assets.Scripts.WorldMap
             public int hexIndex;
         };
 
-        List<List<MyInstanceData>> data2 = new List<List<MyInstanceData>>();
-        MyInstanceData[] data;
         private void SetData()
         {
             // Data
@@ -391,7 +362,6 @@ namespace Assets.Scripts.WorldMap
             }
         }
 
-        List<List<Vector4>> color2 = new List<List<Vector4>>();
         private void SetColor()
         {
             color2.Clear();
@@ -439,6 +409,8 @@ namespace Assets.Scripts.WorldMap
                 i++;
             }
         }
+
+        #endregion
 
 
     }

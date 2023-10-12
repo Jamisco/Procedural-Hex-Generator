@@ -1,28 +1,17 @@
-using Assets;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using static Assets.Scripts.WorldMap.Planet;
-using Assets.Scripts.WorldMap;
 using static Assets.Scripts.WorldMap.HexTile;
 using System.Diagnostics;
 using Debug = UnityEngine.Debug;
 using System;
 using UnityEditor;
-using static Assets.Scripts.Miscellaneous.HexFunctions;
 using Axial = Assets.Scripts.WorldMap.HexTile.Axial;
 using System.Linq;
-using Unity.Jobs;
-using Unity.Collections;
-using UnityEngine.UI;
-using UnityEngine.Rendering;
 using System.Threading.Tasks;
-using System.Collections.Concurrent;
-using static Assets.Scripts.WorldMap.HexChunk;
-using System.Drawing;
+using UnityEngine.InputSystem;
+using System.Xml.Linq;
 
 // Namespace.
-// Kirtan Thakkar
 namespace Assets.Scripts.WorldMap
 {
     [System.Serializable]
@@ -31,7 +20,7 @@ namespace Assets.Scripts.WorldMap
         public HexSettings HexSettings;
         public GameObject hexParent;
         public HexChunk hexChunkPrefab;
-        
+
         private List<HexChunk> hexChunks;
         Dictionary<Axial, HexTile> HexTiles;
 
@@ -42,11 +31,14 @@ namespace Assets.Scripts.WorldMap
         Planet mainPlanet;
 
         private Vector2Int MapSize;
+        private Bounds MapBounds;
         public int ChunkSize;
 
         public enum BiomeVisual { Color, Material }
 
         public BiomeVisual biomeVisual;
+
+        public HexData HighlightedHex;
 
         private void SetGridSettings()
         {
@@ -57,7 +49,7 @@ namespace Assets.Scripts.WorldMap
 
             HexTile.Grid = this;
             HexTile.Planet = planetGenerator;
-            
+
             HexTile.hexSettings = HexSettings;
 
             planetGenerator.MainPlanet.Initialize();
@@ -65,21 +57,18 @@ namespace Assets.Scripts.WorldMap
             mainPlanet = planetGenerator.MainPlanet;
             MapSize = mainPlanet.PlanetSize;
         }
-
-        Bounds mapBounds;
-
         private void SetBounds()
         {
-            Vector3 center 
+            Vector3 center
                 = HexTile.GetPosition(mainPlanet.PlanetSize.x / 2, 0, mainPlanet.PlanetSize.y / 2);
 
             Vector3 start = GetPosition(Vector3Int.zero);
             Vector3 end = GetPosition(mainPlanet.PlanetSize.x, 0, mainPlanet.PlanetSize.y);
 
-            mapBounds = new Bounds(center, end - start);
+            MapBounds = new Bounds(center, end - start);
         }
         private void Awake()
-        {  
+        {
             HexTiles = new Dictionary<Axial, HexTile>();
 
             hexChunks = new List<HexChunk>();
@@ -87,15 +76,23 @@ namespace Assets.Scripts.WorldMap
             SetGridSettings();
 
             GenerateGridChunks();
-
-            SetBounds();
         }
 
+        [Tooltip("If true when mouse is over hex, mouse will highlight, if false, mouse will highlight when clicked")]
+        public bool HoverHighlight = false;
         private void Update()
         {
             UpdateHexProperties();
-           // CheckMouseHover();
-            //UpdateMeshInstanced();
+
+            if (HoverHighlight)
+            {
+                HighlightOnHover();
+            }
+            else
+            {
+                HighlightOnClick();
+
+            }
         }
 
         Stopwatch timer = new Stopwatch();
@@ -126,10 +123,12 @@ namespace Assets.Scripts.WorldMap
 
             InitializeChunks();
 
+            SetBounds();
+
             timer.Stop();
 
             elapsedTime = timer.Elapsed;
-            
+
             formattedTime = $"{elapsedTime.Minutes}m : {elapsedTime.Seconds} s : {elapsedTime.Milliseconds} ms";
 
             Debug.Log("Generation Took : " + formattedTime);
@@ -217,7 +216,7 @@ namespace Assets.Scripts.WorldMap
                     hexChunks.Add(chunk);
                 }
             }
-            
+
             //Debug.Log("Chunk Size: " + ChunkSize);
             //Debug.Log("Chunk count: " + hexChunks.Count);
         }
@@ -274,6 +273,25 @@ namespace Assets.Scripts.WorldMap
         }
 
         #endregion
+
+        /// <summary>
+        /// This is slower because it will loop through all the hexes
+        /// </summary>
+        /// <param name="coordinates"></param>
+        /// <returns></returns>
+        public HexTile GetHexTile(Vector2Int coordinates)
+        {
+            HexTile hex = null;
+            hex = HexTiles.Values.First(h => h.GridCoordinates == coordinates);
+
+            return hex;
+        }
+
+        /// <summary>
+        /// This is the main function to get a hex tiles. Uses a dictionary, so it is super fast
+        /// </summary>
+        /// <param name="coordinates"></param>
+        /// <returns></returns>
         public HexTile GetHexTile(Axial coordinates)
         {
             HexTile hex = null;
@@ -282,65 +300,199 @@ namespace Assets.Scripts.WorldMap
             return hex;
         }
 
-        public HexTile HoveredHex { get; private set; }
-
-        private void CheckMouseHover()
+        void HighlightOnClick()
         {
-            if(!MouseOverMap())
+            if (Mouse.current.leftButton.wasPressedThisFrame)
+            {
+                HexData newData = GetHexDataAtMousePosition();
+
+                if (newData.IsNullOrEmpty())
+                {
+                    return;
+                }
+
+                //Debug.Log("Hex at: " + newData.hex.GridCoordinates);
+
+                //unhighlight the old hex
+                HighlightedHex.UnHighlight();
+                HighlightedHex = newData;
+                //highlight the new one
+                HighlightedHex.Highlight();
+            }
+
+            if(Mouse.current.rightButton.wasPressedThisFrame)
+            {
+                HighlightedHex.UnHighlight();
+            }
+        }
+
+        void HighlightOnHover()
+        {
+            HexData newData = GetHexDataAtMousePosition();
+
+            if (newData.IsNullOrEmpty())
             {
                 return;
             }
 
-            Vector3 pos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            //Debug.Log("Hex at: " + newData.hex.GridCoordinates);
 
-            Vector2Int mousePos = HexTile.GetGridCoordinate(pos);
-
-            Debug.Log("Grid Position: " + mousePos.ToString());
-
-            Axial axeCoord = Axial.ToAxial(mousePos);
-
-            HoveredHex = GetHexTile(axeCoord);
-
-            if(HoveredHex != null)
+            if (newData != HighlightedHex)
             {
-                Debug.Log("Hovered Hex is at: " + HoveredHex.Position.ToString());
+                //unhighlight the old hex
+                HighlightedHex.UnHighlight();
+                HighlightedHex = newData;
+                //highlight the new one
+                HighlightedHex.Highlight();
             }
-            
         }
 
-        private bool MouseOverMap()
+        public HexData GetHexDataAtMousePosition()
         {
-            Vector3 pos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            HexData data = new HexData();
 
-            pos.y = 0;
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
 
-            if(pos.x >= mapBounds.min.x && pos.x <= mapBounds.max.x)
+            RaycastHit hit;
+
+            if (Physics.Raycast(ray, out hit, 1000))
             {
-                return true;
+                HexChunk chunk = hit.collider.GetComponentInParent<HexChunk>();
+
+                if (chunk == null)
+                {
+                    return data;
+                }
+
+                // we subtract the position of the chunk because the hexes are positioned relative to the chunk, so if a chunk is at 0,10 and the hex is at 0,0, the hex is actually at 0,10,0 in world position
+
+                HexTile foundHex = chunk.GetClosestHex(hit.point - transform.position);
+
+                data.chunk = chunk;
+                data.hex = foundHex;
+
+                return data;
             }
 
-            return false;
+            return data;
         }
 
+        /// <summary>
+        /// We use this struct to store the data a hex. This way we dont have to find the chunk. Used for highlighting
+        /// </summary>
+        public struct HexData
+        {
+            public HexChunk chunk;
+            public HexTile hex;
 
-    }
+            public HexData(HexChunk chunk, HexTile aHex)
+            {
+                this.chunk = chunk;
+                this.hex = aHex;
+            }
+
+            public void Highlight()
+            {
+                if (chunk != null && hex != null)
+                {
+                    chunk.HighlightHex(hex);
+                }
+            }
+
+            public void UnHighlight()
+            {
+                if (chunk != null && hex != null)
+                {
+                    chunk.UnHighlightHex();
+                    ResetData();
+                }
+            }
+
+            public void ResetData()
+            {
+                if (chunk != null && hex != null)
+                {
+                    chunk.UnHighlightHex();
+                }
+            }
+            public static bool operator ==(HexData hex1, HexData hex2)
+            {
+                return hex1.Equals(hex2);
+            }
+
+            public static bool operator !=(HexData hex1, HexData hex2)
+            {
+                return !hex1.Equals(hex2);
+            }
+
+            bool Equals(HexData other)
+            {
+                if (chunk == other.chunk)
+                {
+                    if (hex == other.hex)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            public override bool Equals(object obj)
+            {
+                if (obj != null)
+                {
+                    HexData hex;
+
+                    try
+                    {
+                        hex = (HexData)obj;
+                    }
+                    catch (Exception)
+                    {
+                        return false;
+                    }
+
+                    return Equals(hex);
+                }
+
+                return false;
+            }
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(hex, chunk);
+            }
+
+            public bool IsNullOrEmpty()
+            {
+                if (chunk == null && hex == null)
+                {
+                    return true;
+                }
+
+                return false;
+            }
+        }
+
 
 #if UNITY_EDITOR
-    [CustomEditor(typeof(GridManager))]
-    public class ClassButtonEditor : Editor
-    {
-        public override void OnInspectorGUI()
+        [CustomEditor(typeof(GridManager))]
+        public class ClassButtonEditor : Editor
         {
-            DrawDefaultInspector();
-
-            GridManager exampleScript = (GridManager)target;
-
-            if (GUILayout.Button("Generate Grid"))
+            public override void OnInspectorGUI()
             {
-                exampleScript.GenerateGridChunks();
+                DrawDefaultInspector();
+
+                GridManager exampleScript = (GridManager)target;
+
+                if (GUILayout.Button("Generate Grid"))
+                {
+                    exampleScript.GenerateGridChunks();
+                }
             }
         }
-    }
 #endif
-    
+
+    }
 }
