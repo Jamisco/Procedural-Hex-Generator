@@ -101,6 +101,7 @@ namespace Assets.Scripts.WorldMap.Biosphere
             int x = (int)(9 - Math.Round(precipitation * 9));
             int y = (int)Math.Round(temperature * 9);
 
+  
             return (Biomes)BiomeTable[x, y];
         }
 
@@ -109,7 +110,7 @@ namespace Assets.Scripts.WorldMap.Biosphere
             float temp = grid.Temperature;
             float precip = grid.Precipitation;
 
-            return GetBiomeProperties(GetBiome(temp, precip)); // lagging me or you 
+            return GetBiomeProperties(GetBiome(temp, precip)); 
         }
 
         public BiomeProperties GetBiomeProperties(Biomes biome)

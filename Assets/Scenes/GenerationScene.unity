@@ -683,10 +683,13 @@ MonoBehaviour:
     PlanetSize: {x: 100, y: 100}
     InitialSunRayFocus: {x: 10, y: 10}
     SunlightVector: {x: 0, y: 0}
+    SunMovementAmplitude: 0.167
+    SunMovementFrequency: 0.4
     SunlightIntensity: 1
     SunlightArea: 0
-    DaysInYear: 10
+    DaysInYear: 106
     currentDay: 0
+    WeatherYPosition: 0.284
     TerrestrialBody:
       biomeData:
       - biome: 0
@@ -727,6 +730,8 @@ MonoBehaviour:
       - biome: 0
         color: {r: 0.27033645, g: 0.63245726, b: 0.7075472, a: 1}
         texture: {fileID: 2800000, guid: aa701e5be2dbcd24aad4fb9c3ca284da, type: 3}
+    SunMovementVector: {x: 0, y: 0}
+    SunMovementPatterns: 0
   CircularSun: 0
   VerticalSun: 0
   planetFractal: 1
