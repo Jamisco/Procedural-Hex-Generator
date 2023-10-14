@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine.InputSystem;
 using System.Xml.Linq;
+using static Assets.Scripts.WorldMap.GridManager;
 
 // Namespace.
 namespace Assets.Scripts.WorldMap
@@ -38,7 +39,7 @@ namespace Assets.Scripts.WorldMap
 
         public BiomeVisual biomeVisual;
 
-        public HexData HighlightedHex;
+        public Dictionary<int, HexData> HighlightedHexes;
 
         private void SetGridSettings()
         {
@@ -73,6 +74,8 @@ namespace Assets.Scripts.WorldMap
 
             hexChunks = new List<HexChunk>();
 
+            HighlightedHexes = new Dictionary<int, HexData>();
+
             SetGridSettings();
 
             GenerateGridChunks();
@@ -95,16 +98,12 @@ namespace Assets.Scripts.WorldMap
             }
         }
 
-        Stopwatch timer = new Stopwatch();
-        string formattedTime = "";
-        TimeSpan elapsedTime;
-
         #region Hex Generation Methods
         public void GenerateGridChunks()
         {
             hexSettings.ResetVariables();
-            timer.Start();
             HexTiles.Clear();
+            HighlightedHexes.Clear();
 
             DestroyChildren();
 
@@ -124,16 +123,6 @@ namespace Assets.Scripts.WorldMap
             InitializeChunks();
 
             SetBounds();
-
-            timer.Stop();
-
-            elapsedTime = timer.Elapsed;
-
-            formattedTime = $"{elapsedTime.Minutes}m : {elapsedTime.Seconds} s : {elapsedTime.Milliseconds} ms";
-
-            Debug.Log("Generation Took : " + formattedTime);
-
-            timer.Reset();
         }
         public void InitializeChunks()
         {
@@ -165,13 +154,14 @@ namespace Assets.Scripts.WorldMap
 
             ChunkSize = (int)Mathf.Sqrt(maxHexCount);
 
-            if (ChunkSize > MapSize.x || ChunkSize > MapSize.y)
+            // if the map is small enough such that it can fit in out chunk size, we use the map size instead
+            if (ChunkSize * ChunkSize > MapSize.x * MapSize.y)
             {
                 // Since all chunks will be squares, we use the smaller of the two map sizes
-                ChunkSize = Mathf.Min(MapSize.x, MapSize.y);
+                ChunkSize = Mathf.Max(MapSize.x, MapSize.y);
             }
 
-            ChunkSize -= 1;
+            //ChunkSize -= 1;
 
             int chunkCountX = Mathf.CeilToInt((float)MapSize.x / ChunkSize);
             int chunkCountZ = Mathf.CeilToInt((float)MapSize.y / ChunkSize);
@@ -299,34 +289,29 @@ namespace Assets.Scripts.WorldMap
 
             return hex;
         }
-
-        void HighlightOnClick()
+        private void HighlightOnClick()
         {
+            HexData newData;
+            
             if (Mouse.current.leftButton.wasPressedThisFrame)
             {
-                HexData newData = GetHexDataAtMousePosition();
+                newData = GetHexDataAtMousePosition();
 
                 if (newData.IsNullOrEmpty())
                 {
                     return;
                 }
 
-                //Debug.Log("Hex at: " + newData.hex.GridCoordinates);
-
-                //unhighlight the old hex
-                HighlightedHex.UnHighlight();
-                HighlightedHex = newData;
-                //highlight the new one
-                HighlightedHex.Highlight();
+                HighlightHex(newData);
             }
 
             if(Mouse.current.rightButton.wasPressedThisFrame)
             {
-                HighlightedHex.UnHighlight();
+                newData = GetHexDataAtMousePosition();
+                UnHighlightHex(newData);
             }
         }
-
-        void HighlightOnHover()
+        private void HighlightOnHover()
         {
             HexData newData = GetHexDataAtMousePosition();
 
@@ -337,17 +322,39 @@ namespace Assets.Scripts.WorldMap
 
             //Debug.Log("Hex at: " + newData.hex.GridCoordinates);
 
-            if (newData != HighlightedHex)
+            HighlightHex(newData);
+        }
+
+        public void HighlightHex(HexData hex)
+        {
+            if (hex.IsNullOrEmpty())
             {
-                //unhighlight the old hex
-                HighlightedHex.UnHighlight();
-                HighlightedHex = newData;
-                //highlight the new one
-                HighlightedHex.Highlight();
+                return;
+            }
+
+            if (!HighlightedHexes.ContainsKey(hex.Hash))
+            {
+                HighlightedHexes.Add(hex.Hash, hex);
+                hex.Highlight();
             }
         }
 
-        public HexData GetHexDataAtMousePosition()
+        public void UnHighlightHex(HexData hex)
+        {
+            if (hex.IsNullOrEmpty())
+            {
+                return;
+            }
+
+            if (HighlightedHexes.ContainsKey(hex.Hash))
+            {
+                HighlightedHexes.Remove(hex.Hash);
+                hex.UnHighlight();
+            }
+        }
+
+        
+        private HexData GetHexDataAtMousePosition()
         {
             HexData data = new HexData();
 
@@ -384,7 +391,7 @@ namespace Assets.Scripts.WorldMap
         {
             public HexChunk chunk;
             public HexTile hex;
-
+            public int Hash { get { return GetHashCode(); } }
             public HexData(HexChunk chunk, HexTile aHex)
             {
                 this.chunk = chunk;
@@ -403,7 +410,7 @@ namespace Assets.Scripts.WorldMap
             {
                 if (chunk != null && hex != null)
                 {
-                    chunk.UnHighlightHex();
+                    chunk.UnHighlightHex(hex);
                     ResetData();
                 }
             }
@@ -412,7 +419,7 @@ namespace Assets.Scripts.WorldMap
             {
                 if (chunk != null && hex != null)
                 {
-                    chunk.UnHighlightHex();
+                    chunk.UnHighlightHex(hex);
                 }
             }
             public static bool operator ==(HexData hex1, HexData hex2)

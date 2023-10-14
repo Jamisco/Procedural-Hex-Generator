@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
@@ -14,11 +15,14 @@ using static Assets.Scripts.WorldMap.Biosphere.SurfaceBody;
 using static Assets.Scripts.WorldMap.GridManager;
 using static Assets.Scripts.WorldMap.HexTile;
 using static UnityEditor.FilePathAttribute;
+using static UnityEngine.Mesh;
 using Debug = UnityEngine.Debug;
 
 namespace Assets.Scripts.WorldMap
 {
     // Due to the nature of this class, it will have to work hand in hand with the Gridmanager is order to properly share data. It is recommended that you refrain from doing specific functions that would limit the gridmanager from being able to controlt them. For example, a chunk should not be the one to highlight itself, but rather the gridmanager should be the one to do it. A chunk should not store the data, data about itself that isnt nessacary for it to display its meshes. We should force the Gridmanager to store that.
+
+    // Max hex count per chunk is about 1600. See Gridmanager.CreateHexChunks() for details
     [RequireComponent(typeof(MeshFilter))]
     [RequireComponent(typeof(MeshRenderer))]
     [RequireComponent(typeof(MeshCollider))]
@@ -40,20 +44,33 @@ namespace Assets.Scripts.WorldMap
         public List<Material> materials = new List<Material>();
         List<MaterialPropertyBlock> blocks = new List<MaterialPropertyBlock>();
 
-        public Vector2Int StartPosition;
+        // the highlight layer has to be above the base layer.
+        // how high above do u want it to be
+        private static readonly Vector3 HighlightLayerOffset = new Vector3(0, .001f, 0);
 
+
+        // you must be aware that technically speaking, all these chunks are at position (0,0). It is their meshes/hexes that are place appriopriately
+        public Vector2Int StartPosition;
         public BoundsInt ChunkBounds;
 
         RenderParams renderParams;
         RenderParams instanceParam;
 
+        MeshFilter meshFilter;
         GameObject HighlightLayer;
+        FusedMesh HighlightedHexes;
+
         private void Awake()
         {
             renderParams = new RenderParams(MainMaterial);
             instanceParam = new RenderParams(InstanceMaterial);
 
             HighlightLayer = gameObject.GetGameObject("HighlightLayer");
+
+            HighlightLayer.transform.position += HighlightLayerOffset;
+
+            meshFilter = HighlightLayer.GetComponent<MeshFilter>();
+            meshFilter.mesh.MarkDynamic();
         }
 
         public void Initialize(BoundsInt aBounds)
@@ -66,6 +83,8 @@ namespace Assets.Scripts.WorldMap
             // the reason we use a concurrent bag is because it is thread safe
             // thus you can add to it from multiple from threads
             conHexes = new ConcurrentBag<HexTile>();
+
+            HighlightedHexes = new FusedMesh();
         }
 
         public bool IsInChunk(HexTile hex)
@@ -238,9 +257,7 @@ namespace Assets.Scripts.WorldMap
             }
         }
 
-        // the highlight layer has to be above the base layer.
-        // how high above do u want it to be
-        Vector3 HighlightLayerOffset = new Vector3(0, .001f, 0);
+
         public void HighlightHex(HexTile hex)
         {
             // if you want to highlight multiple meshes at once, 
@@ -248,19 +265,22 @@ namespace Assets.Scripts.WorldMap
 
             // additionally, it might prove worthy to store the highlighted Hex for later use
 
-            Mesh HighMesh = hexSettings.GetOuterHighlighter();
+            HighlightedHexes.AddMesh(hexSettings.GetOuterHighlighter(), 
+                hex.GetHashCode(), hex.Position);
 
-            HighlightLayer.transform.position = hex.Position + gameObject.transform.position + HighlightLayerOffset;
+            meshFilter.mesh = HighlightedHexes.Mesh;
 
-            HighlightLayer.GetComponent<MeshFilter>().mesh = HighMesh;
-            HighlightLayer.GetComponent<MeshFilter>().sharedMesh = HighMesh;
+            //HighlightedHexes.SetMesh(ref mfMesh);
 
+            // HighlightLayer.GetComponent<MeshFilter>().sharedMesh = HighlightedHexes.Mesh;
         }
 
-        public void UnHighlightHex()
+        public void UnHighlightHex(HexTile hex)
         {
-            HighlightLayer.GetComponent<MeshFilter>().mesh = null;
-            HighlightLayer.GetComponent<MeshFilter>().sharedMesh = null;
+            HighlightedHexes.RemoveMesh(hex.GetHashCode());
+
+            meshFilter.mesh = HighlightedHexes.Mesh;
+
         } 
         private void SetMaterialProperties()
         {
@@ -325,93 +345,92 @@ namespace Assets.Scripts.WorldMap
 
         #region The Below is for Gpu Mesh generation, Dont touch unless you know what you are doing
 
-        // the limit for graphic instances is 500
-        private static int maxLimit = 500;
-        List<List<MyInstanceData>> data2 = new List<List<MyInstanceData>>();
-        List<List<Vector4>> color2 = new List<List<Vector4>>();
-        MyInstanceData[] data;
-        public struct MyInstanceData
-        {
-            public Matrix4x4 objectToWorld; // We must specify object-to-world transformation for each instance
-            public uint renderingLayerMask; // In addition we also like to specify rendering layer mask per instence.
-
-            public int hexIndex;
-        };
-
-        private void SetData()
-        {
-            // Data
-            data = new MyInstanceData[hexes.Count];
-            data2.Clear();
-
-            Parallel.For(0, hexes.Count, x =>
+            // the limit for graphic instances is 500
+            private static int maxLimit = 500;
+            List<List<MyInstanceData>> data2 = new List<List<MyInstanceData>>();
+            List<List<Vector4>> color2 = new List<List<Vector4>>();
+            MyInstanceData[] data;
+            public struct MyInstanceData
             {
-                MyInstanceData d = new MyInstanceData();
-                d.objectToWorld = Matrix4x4.Translate(hexes[x].Position);
-                d.renderingLayerMask = 0;
+                public Matrix4x4 objectToWorld; // We must specify object-to-world transformation for each instance
+                public uint renderingLayerMask; // In addition we also like to specify rendering layer mask per instence.
 
-                d.hexIndex = x;
-                data[x] = d;
-            });
+                public int hexIndex;
+            };
 
-            while (data.Any())
+            private void SetData()
             {
-                data2.Add(data.Take(maxLimit).ToList());
-                
-                data = data.Skip(maxLimit).ToArray();
-            }
-        }
+                // Data
+                data = new MyInstanceData[hexes.Count];
+                data2.Clear();
 
-        private void SetColor()
-        {
-            color2.Clear();
-            Vector4[] aColor;
-            
-            foreach (List<MyInstanceData> item in data2)
-            {
-                aColor = new Vector4[item.Count];
-
-                Parallel.For(0, item.Count, x =>
+                Parallel.For(0, hexes.Count, x =>
                 {
-                    aColor[x] = 
-                    hexes[item[x].hexIndex].HexBiomeProperties.BiomeColor;
+                    MyInstanceData d = new MyInstanceData();
+                    d.objectToWorld = Matrix4x4.Translate(hexes[x].Position + transform.position);
+                    d.renderingLayerMask = 0;
+
+                    d.hexIndex = x;
+                    data[x] = d;
                 });
 
-                color2.Add(aColor.ToList());
+                while (data.Any())
+                {
+                    data2.Add(data.Take(maxLimit).ToList());
+                
+                    data = data.Skip(maxLimit).ToArray();
+                }
             }
-        }
 
-        Mesh instanceMesh;
-        MaterialPropertyBlock instanceBlock;
-        public void RenderMesh()
-        {
-            if (data2.Count == 0)
+            private void SetColor()
             {
-                SetData();
-                instanceMesh = hexes[0].DrawMesh();
+                color2.Clear();
+                Vector4[] aColor;
+            
+                foreach (List<MyInstanceData> item in data2)
+                {
+                    aColor = new Vector4[item.Count];
+
+                    Parallel.For(0, item.Count, x =>
+                    {
+                        aColor[x] = 
+                        hexes[item[x].hexIndex].HexBiomeProperties.BiomeColor;
+                    });
+
+                    color2.Add(aColor.ToList());
+                }
             }
 
-            SetColor();
-
-            int i = 0;
-
-            foreach (List<MyInstanceData> item in data2)
+            Mesh instanceMesh;
+            MaterialPropertyBlock instanceBlock;
+            public void RenderMesh()
             {
-                instanceBlock = new MaterialPropertyBlock();
+                if (data2.Count == 0)
+                {
+                    SetData();
+                    instanceMesh = hexes[0].DrawMesh();
+                }
 
-                Vector4[] v = color2.ElementAt(i).ToArray();
+                SetColor();
 
-                instanceBlock.SetVectorArray("_MeshColors", v);
-                instanceParam.matProps = instanceBlock;
+                int i = 0;
 
-                Graphics.RenderMeshInstanced(instanceParam, instanceMesh, 0, item);
+                foreach (List<MyInstanceData> item in data2)
+                {
+                    instanceBlock = new MaterialPropertyBlock();
 
-                i++;
+                    Vector4[] v = color2.ElementAt(i).ToArray();
+
+                    instanceBlock.SetVectorArray("_MeshColors", v);
+                    instanceParam.matProps = instanceBlock;
+
+                    Graphics.RenderMeshInstanced(instanceParam, instanceMesh, 0, item);
+
+                    i++;
+                }
             }
-        }
 
-        #endregion
-
+            #endregion
 
     }
 
@@ -555,4 +574,5 @@ namespace Assets.Scripts.WorldMap
             return uv;
         }
     }
+
 }

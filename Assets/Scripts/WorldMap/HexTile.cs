@@ -443,6 +443,8 @@ namespace Assets.Scripts.WorldMap
             Triangles = hexSettings.BaseTrianges();
 
             Vertices = hexSettings.VertexCorners;
+
+            BaseUV = hexSettings.BaseHexUV;
         }
 
         /// <summary>

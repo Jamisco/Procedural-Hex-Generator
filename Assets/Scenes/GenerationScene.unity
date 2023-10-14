@@ -200,7 +200,7 @@ MonoBehaviour:
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 1
-  m_PresetInfoIsWorld: 1
+  m_PresetInfoIsWorld: 0
 --- !u!223 &356669711
 Canvas:
   m_ObjectHideFlags: 0
@@ -687,7 +687,6 @@ MonoBehaviour:
   ChunkBounds:
     m_Position: {x: 0, y: 0, z: 0}
     m_Size: {x: 0, y: 0, z: 0}
-  MouseOverChunk: 0
 --- !u!1 &1605946129
 GameObject:
   m_ObjectHideFlags: 0
@@ -727,6 +726,7 @@ MonoBehaviour:
   planetGenerator: {fileID: 1605946132}
   ChunkSize: 0
   biomeVisual: 0
+  HoverHighlight: 0
   UpdateMap: 0
 --- !u!4 &1605946131
 Transform:

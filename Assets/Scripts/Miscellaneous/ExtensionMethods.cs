@@ -81,5 +81,27 @@ namespace Assets.Scripts.Miscellaneous
 
             return normalizedValue;
         }
+
+        /// <summary>
+        /// Will log the given milliseconds in a readable format. 
+        /// </summary>
+        /// <param name="message"></param>
+        /// <param name="timeInMilliseconds"></param>
+        public static void LogTimer(string message, float timeInMilliseconds)
+        {
+            int minutes;
+            float seconds;
+
+            if (timeInMilliseconds >= 60000)
+            {
+                minutes = (int)(timeInMilliseconds / 60000);
+                seconds = (timeInMilliseconds % 60000) / 1000f;
+                Debug.Log($"{message} {minutes} minutes {seconds} seconds");
+            }
+            else
+            {
+                Debug.Log($"{message} {timeInMilliseconds / 1000f} seconds");
+            }
+        }
     }
 }

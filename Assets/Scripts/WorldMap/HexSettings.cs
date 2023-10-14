@@ -153,7 +153,7 @@ namespace Assets.Scripts.WorldMap
             4, 2, 3 
         };
 
-        public Mesh OuterHighlighter;
+        private Mesh OuterHighlighter;
         public Mesh GetOuterHighlighter()
         {
             if(OuterHighlighter != null)
