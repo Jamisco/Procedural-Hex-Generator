@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using UnityEngine.InputSystem;
 using System.Xml.Linq;
 using static Assets.Scripts.WorldMap.GridManager;
+using Assets.Scripts.Miscellaneous;
 
 // Namespace.
 namespace Assets.Scripts.WorldMap
@@ -101,6 +102,9 @@ namespace Assets.Scripts.WorldMap
         #region Hex Generation Methods
         public void GenerateGridChunks()
         {
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+            
             hexSettings.ResetVariables();
             HexTiles.Clear();
             HighlightedHexes.Clear();
@@ -123,6 +127,10 @@ namespace Assets.Scripts.WorldMap
             InitializeChunks();
 
             SetBounds();
+
+            sw.Stop();
+
+            ExtensionMethods.LogTimer("Generation Time: ", sw.ElapsedMilliseconds);
         }
         public void InitializeChunks()
         {

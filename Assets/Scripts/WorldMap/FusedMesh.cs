@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.XR;
 using static UnityEditor.Searcher.SearcherWindow.Alignment;
 
@@ -20,14 +21,18 @@ namespace Assets.Scripts.WorldMap
         private List<int> Triangles;
         private List<Vector2> UVs;
         private List<Color> Colors;
+
+        public int VertexCount { get { return Vertices.Count; } }
+        public int TriangleCount { get { return Triangles.Count; } }
         
         public Mesh Mesh;
+
 
         private void Init()
         {
             MeshHashes = new List<int>();
             MeshSizes = new List<(int, int)>();
-
+            
             Vertices = new List<Vector3>();
             Triangles = new List<int>();
             Colors = new List<Color>();
@@ -70,7 +75,6 @@ namespace Assets.Scripts.WorldMap
             AddToList(hash, mesh.vertexCount, mesh.triangles.Length);
 
             AddMeshAtEnd(mesh, offset);
-
         }
 
         /// <summary>
@@ -208,10 +212,49 @@ namespace Assets.Scripts.WorldMap
             Mesh.Clear();
            
             Mesh.vertices = Vertices.ToArray();
-            Mesh.RecalculateBounds();
             Mesh.triangles = Triangles.ToArray();
             Mesh.colors = Colors.ToArray();
             Mesh.uv = UVs.ToArray();
+        }
+
+        public static implicit operator Mesh(FusedMesh f)
+        {
+            return f.Mesh;
+        }
+        public static Mesh CombineToSubmesh(List<FusedMesh> subMesh)
+        {
+            Mesh newMesh = new Mesh();
+            
+            CombineInstance[] tempArray = new CombineInstance[subMesh.Count];
+
+            for (int i = 0; i < subMesh.Count; i++)
+            {
+                CombineInstance subInstance = new CombineInstance();
+
+                subInstance.mesh = subMesh[i];
+
+                tempArray[i] = subInstance;
+            }
+        
+            newMesh.CombineMeshes(tempArray, false, false);
+
+            return newMesh;
+        }
+        public Mesh CombineToSubmesh(Mesh subMesh)
+        {
+            Mesh newMesh = new Mesh();
+            
+            newMesh = Mesh;
+            
+            CombineInstance subInstance = new CombineInstance();
+
+            subInstance.mesh = subMesh;
+
+            CombineInstance[] tempArray = new CombineInstance[0];
+
+            newMesh.CombineMeshes(tempArray);
+
+            return newMesh;
         }
 
         public static void CloneMesh(Mesh parent, ref Mesh clone)

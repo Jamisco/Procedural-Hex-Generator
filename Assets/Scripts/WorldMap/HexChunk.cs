@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.UIElements;
 using static Assets.Scripts.WorldMap.Biosphere.SurfaceBody;
 using static Assets.Scripts.WorldMap.GridManager;
@@ -40,6 +41,10 @@ namespace Assets.Scripts.WorldMap
         private ConcurrentBag<HexTile> conHexes;
 
         public ConcurrentDictionary<Vector2Int, HexTile> hexDictionary = new ConcurrentDictionary<Vector2Int, HexTile>();
+
+        public ConcurrentDictionary<BiomeProperties, List<HexTile>> biomeTiles = new ConcurrentDictionary<BiomeProperties, List<HexTile>>();
+
+        public Dictionary<BiomeProperties, FusedMesh> biomeFusedMeshes = new Dictionary<BiomeProperties, FusedMesh>();
 
         public List<Material> materials = new List<Material>();
         List<MaterialPropertyBlock> blocks = new List<MaterialPropertyBlock>();
@@ -124,47 +129,56 @@ namespace Assets.Scripts.WorldMap
         {
             subMeshes.Clear();
             hexes = conHexes.ToList();
-            CombineMeshes();
+            SplitDictionary();
+            FuseMeshes();
+           // CombineMeshes();
         }
+        
+        private void SplitDictionary()
+        {
+            //List<CombineInstance> tempCombine = new List<CombineInstance>();
+            //CombineInstance instance;
+
+            //subMeshes.Clear();
+
+            foreach (HexTile hex in hexDictionary.Values)
+            {
+                if (biomeTiles.TryGetValue(hex.HexBiomeProperties,
+                                    out List<HexTile> hexes))
+                {
+                    hexes.Add(hex);
+                }
+                else
+                {
+                    hexes = new List<HexTile>();
+                    hexes.Add(hex);
+                    biomeTiles.TryAdd(hex.HexBiomeProperties, hexes);
+
+                    //tempCombine = new List<CombineInstance>();
+                    //subMeshes.Add(hex.HexBiomeProperties, tempCombine);
+                }
+
+                //instance = new CombineInstance();
+
+                //instance.mesh = hex.DrawMesh();
+
+                //List<Color> colors = new List<Color>();
+
+                //for (int c = 0; c < instance.mesh.vertexCount; c++)
+                //{
+                //    colors.Add(hex.HexBiomeProperties.BiomeColor);
+                //}
+
+                //instance.mesh.SetColors(colors);
+
+                //instance.transform = Matrix4x4.Translate(hex.Position);
+                //tempCombine.Add(instance);
+            }
+        }
+
         private void CombineMeshes()
         {
             Mesh mesh = new Mesh();
-
-            subMeshes.Clear();
-            
-            List<CombineInstance> tempCombine = new List<CombineInstance>();
-            CombineInstance instance;
-
-            // split and store the meshes into submeshes based on their biome
-            for (int i = 0; i < hexes.Count; i++)
-            {
-                HexTile hex = hexes[i];               
-
-                subMeshes.TryGetValue(hex.HexBiomeProperties, out tempCombine);
-
-                if(tempCombine == null)
-                {
-                    tempCombine = new List<CombineInstance>();
-                    subMeshes.Add(hex.HexBiomeProperties, tempCombine);
-                }
-
-                instance = new CombineInstance();
-                
-                instance.mesh = hex.DrawMesh();
-
-                List<Color> colors = new List<Color>();
-
-                for (int c = 0; c < instance.mesh.vertexCount; c++)
-                {
-                    colors.Add(hex.HexBiomeProperties.BiomeColor);
-                }
-
-                instance.mesh.SetColors(colors);
-
-                instance.transform = Matrix4x4.Translate(hexes[i].Position);
-                tempCombine.Add(instance);
-
-            }
 
             Mesh preMesh;
 
@@ -192,6 +206,46 @@ namespace Assets.Scripts.WorldMap
             GetComponent<MeshFilter>().mesh = mesh;
             GetComponent<MeshCollider>().sharedMesh = mesh;
         }
+
+        private void FuseMeshes()
+        {
+            List<Mesh> meshes = new List<Mesh>();
+            List<int> hashes = new List<int>();
+            List<Vector3> offsets = new List<Vector3>();
+            
+            foreach (KeyValuePair<BiomeProperties, List<HexTile>> biomes in biomeTiles)
+            {
+                ExtractData(biomes.Value);
+
+                biomeFusedMeshes.Add(biomes.Key, new FusedMesh(meshes, hashes, offsets));
+            }
+
+            // The downside of this is that every time you change the mesh of any fused mesh you have to recombine ALL the other meshes
+            Mesh mainMeshes = FusedMesh.CombineToSubmesh(
+                biomeFusedMeshes.Values.ToList());
+
+            SetMaterialProperties();
+
+            SetMaterialPropertyBlocks();
+
+            GetComponent<MeshFilter>().mesh = mainMeshes;
+            GetComponent<MeshCollider>().sharedMesh = mainMeshes;
+
+            void ExtractData(List<HexTile> hexes)
+            {
+                meshes.Clear();
+                hashes.Clear();
+                offsets.Clear();
+                
+                foreach (HexTile hex in hexes)
+                {
+                    meshes.Add(hex.DrawMesh());
+                    hashes.Add(hex.GetHashCode());
+                    offsets.Add(hex.Position);
+                }
+            }
+        }
+
 
         /// <summary>
         /// Since we combined all of the individual meshes into one, there exist only one collider. THus we need to find the hex that was clicked on base on the position. 
@@ -260,19 +314,10 @@ namespace Assets.Scripts.WorldMap
 
         public void HighlightHex(HexTile hex)
         {
-            // if you want to highlight multiple meshes at once, 
-            // you can use a combine instance lists and simply add hexes accordingly
-
-            // additionally, it might prove worthy to store the highlighted Hex for later use
-
             HighlightedHexes.AddMesh(hexSettings.GetOuterHighlighter(), 
                 hex.GetHashCode(), hex.Position);
 
             meshFilter.mesh = HighlightedHexes.Mesh;
-
-            //HighlightedHexes.SetMesh(ref mfMesh);
-
-            // HighlightLayer.GetComponent<MeshFilter>().sharedMesh = HighlightedHexes.Mesh;
         }
 
         public void UnHighlightHex(HexTile hex)
@@ -295,10 +340,10 @@ namespace Assets.Scripts.WorldMap
         }
         private void SetMaterialColor()
         {
-            for (int i = 0; i < subMeshes.Count; i++)
+            for (int i = 0; i < biomeFusedMeshes.Count; i++)
             {
                 Material newMat = new Material(MainMaterial);
-                Color color = subMeshes.Keys.ElementAt(i).BiomeColor;
+                Color color = biomeFusedMeshes.Keys.ElementAt(i).BiomeColor;
 
                 MaterialPropertyBlock block = new MaterialPropertyBlock();
 
@@ -312,19 +357,17 @@ namespace Assets.Scripts.WorldMap
         }
         private void SetMaterialTexture()
         {
-            for (int i = 0; i < subMeshes.Count; i++)
+            for (int i = 0; i < biomeFusedMeshes.Count; i++)
             {
                 Material newMat = new Material(MainMaterial);
 
-                Texture2D texture = subMeshes.Keys.ElementAt(i).BiomeTexture;
+                Texture2D texture = biomeFusedMeshes.Keys.ElementAt(i).BiomeTexture;
 
                 newMat.SetTexture("_MainTex", texture);
 
                 materials.Add(newMat);
             }
         }
-
-
         public void SetMaterialPropertyBlocks()
         {
             Renderer renderer = GetComponent<Renderer>();
