@@ -10,8 +10,13 @@ using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine.InputSystem;
 using System.Xml.Linq;
-using static Assets.Scripts.WorldMap.GridManager;
 using Assets.Scripts.Miscellaneous;
+using static Assets.Scripts.WorldMap.GridManager;
+using static Assets.Scripts.Miscellaneous.ExtensionMethods;
+using Unity.VisualScripting;
+using UnityEngine.Rendering.Universal;
+using UnityEngine.UIElements.Experimental;
+using System.Collections;
 
 // Namespace.
 namespace Assets.Scripts.WorldMap
@@ -102,9 +107,34 @@ namespace Assets.Scripts.WorldMap
         #region Hex Generation Methods
         public void GenerateGridChunks()
         {
+            // Time starts for 300 x 300
+
+            //Computer Biome : .044-- 1.2 %
+            //Create Chunks: .05-- 1.4 %
+            //Create Hexes: 1.257-- 36.4 %
+
+            //Splitting : .355 - 10.3 %
+
+            //Fusing : 2.029 - 58.87 %
+
+            //Draw Mesh: 2.406 - 69.82 %
+
+            //Generation : 3.446
+
+            // Time stats for 1000 x 1000
+
+            // Compute Biome: .457
+            // Create Chunks: .516
+            // Create Hexes: 14.943
+
+            // be advised this time is when we drew the chunks using the coroutine
+            // What ultimately matters is the time it takes to draw the chunks, which can be circumvented by using a coroutine to draw them bit by bit, or else the game will freeze for a while depending on the size of the map
+            
+            // Generation Time: 14.976
+
             Stopwatch sw = new Stopwatch();
             sw.Start();
-            
+
             hexSettings.ResetVariables();
             HexTiles.Clear();
             HighlightedHexes.Clear();
@@ -116,21 +146,25 @@ namespace Assets.Scripts.WorldMap
             planetGenerator.SetComputeSize();
             planetGenerator.ComputeBiomeNoise();
 
-            HexTiles = HexTile.CreatesHexes(MapSize);
+            LogTimer("Compute Biome: ", sw.ElapsedMilliseconds);
 
-            //Debug.Log("Creation Took : " + (timer.ElapsedMilliseconds / 1000f).ToString("0.00") + " seconds");
+            CreateHexChunks();
 
-            HexTile.CreateSlopes(HexTiles);
+            LogTimer("Create Chunks: ", sw.ElapsedMilliseconds);
 
-            //Debug.Log("Slopes Elapsed : " + (timer.ElapsedMilliseconds / 1000f).ToString("0.00") + " seconds");
+            HexTiles = HexTile.CreatesHexes(MapSize, ref hexChunks);
 
-            InitializeChunks();
+            LogTimer("Create Hexes: ", sw.ElapsedMilliseconds);
+
+            StartCoroutine(SpawnChunkEveryXSeconds(0));
+
+            
 
             SetBounds();
 
             sw.Stop();
 
-            ExtensionMethods.LogTimer("Generation Time: ", sw.ElapsedMilliseconds);
+            LogTimer("Generation Time: ", sw.ElapsedMilliseconds);
         }
         public void InitializeChunks()
         {
@@ -143,11 +177,18 @@ namespace Assets.Scripts.WorldMap
 
             //Debug.Log("Adding To Chunk Elapsed : " + (timer.ElapsedMilliseconds / 1000f).ToString("0.00") + " seconds");
 
-            foreach (HexChunk chunk in hexChunks)
+
+        }
+
+        private IEnumerator SpawnChunkEveryXSeconds(float time)
+        {
+            for(int i = 0; i < hexChunks.Count; i++)
             {
-                chunk.DrawMesh();
+                hexChunks[i].IniaiteDrawProtocol();    
+                yield return new WaitForSeconds(time);
             }
         }
+
         private void CreateHexChunks()
         {
             hexChunks.Clear();
@@ -300,7 +341,7 @@ namespace Assets.Scripts.WorldMap
         private void HighlightOnClick()
         {
             HexData newData;
-            
+
             if (Mouse.current.leftButton.wasPressedThisFrame)
             {
                 newData = GetHexDataAtMousePosition();
@@ -313,10 +354,16 @@ namespace Assets.Scripts.WorldMap
                 HighlightHex(newData);
             }
 
-            if(Mouse.current.rightButton.wasPressedThisFrame)
+            if (Mouse.current.rightButton.wasPressedThisFrame)
             {
                 newData = GetHexDataAtMousePosition();
-                UnHighlightHex(newData);
+
+                if (newData.IsNullOrEmpty())
+                {
+                    return;
+                }
+
+                newData.Remove();
             }
         }
         private void HighlightOnHover()
@@ -361,7 +408,7 @@ namespace Assets.Scripts.WorldMap
             }
         }
 
-        
+
         private HexData GetHexDataAtMousePosition()
         {
             HexData data = new HexData();
@@ -414,6 +461,14 @@ namespace Assets.Scripts.WorldMap
                 }
             }
 
+            public void Remove()
+            {
+                if (chunk != null && hex != null)
+                {
+                    chunk.RemoveHex(hex);
+                    ResetData();
+                }
+            }
             public void UnHighlight()
             {
                 if (chunk != null && hex != null)
@@ -425,10 +480,8 @@ namespace Assets.Scripts.WorldMap
 
             public void ResetData()
             {
-                if (chunk != null && hex != null)
-                {
-                    chunk.UnHighlightHex(hex);
-                }
+                chunk = null;
+                hex = null;
             }
             public static bool operator ==(HexData hex1, HexData hex2)
             {

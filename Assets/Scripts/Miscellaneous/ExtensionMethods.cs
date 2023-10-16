@@ -36,6 +36,14 @@ namespace Assets.Scripts.Miscellaneous
             return gameObject.GetComponentByName<Transform>(objectName).gameObject;
         }
 
+        public static void RemoveRange<T>(this List<T> collection, int startIndex, int count)
+        {
+            if (collection.Count > startIndex)
+            {
+                collection.RemoveRange(startIndex, count);
+            }
+        }
+
         private static Random random = new Random(Environment.TickCount);
         private static readonly object syncLock = new object();
         // https://csharpindepth.com/Articles/Random

@@ -403,7 +403,7 @@ namespace Assets.Scripts.WorldMap
             CreateBaseMesh();
             //CreateOuterHexMesh();
 
-            //DrawMesh();
+            //IniaiteDrawProtocol();
 
             SetBounds();
         }
@@ -417,25 +417,31 @@ namespace Assets.Scripts.WorldMap
 
         }
 
-        public static Dictionary<Axial, HexTile> CreatesHexes(Vector2Int MapSize)
+        public static Dictionary<Axial, HexTile> CreatesHexes(Vector2Int MapSize, ref List<HexChunk> hexChunks)
         {
-            int initCapacity = MapSize.x * MapSize.y + 10;
-            int numProcs = Environment.ProcessorCount;
-            int concurrencyLevel = numProcs * 2;
+            Dictionary<Axial, HexTile> hexTiles = new Dictionary<Axial, HexTile>(MapSize.x * MapSize.y + 10);
 
-            ConcurrentDictionary<Axial, HexTile> tempHexTiles = new ConcurrentDictionary<Axial, HexTile>(concurrencyLevel, initCapacity);
-
-            Parallel.For(0, MapSize.x, x =>
+            Parallel.ForEach(hexChunks, chunk =>
             {
-                for (int z = 0; z < MapSize.y; z++)
-                {
-                    HexTile hc = new HexTile(x, z);
+                int chunkBoundsXMin = chunk.ChunkBounds.xMin;
+                int chunkBoundsXMax = chunk.ChunkBounds.xMax;
+                int chunkBoundsYMin = chunk.ChunkBounds.yMin;
+                int chunkBoundsYMax = chunk.ChunkBounds.yMax;
 
-                    tempHexTiles.TryAdd(hc.AxialCoordinates, hc);
+                for (int x = chunkBoundsXMin; x < chunkBoundsXMax; x++)
+                {
+                    for (int z = chunkBoundsYMin; z < chunkBoundsYMax; z++)
+                    {
+                        HexTile hc = new HexTile(x, z);
+
+                        hexTiles[hc.AxialCoordinates] = hc;
+
+                        chunk.AddHex(hc);
+                    }
                 }
             });
 
-            return new Dictionary<Axial, HexTile>(tempHexTiles);
+            return hexTiles;
         }
 
         public void CreateBaseMesh()

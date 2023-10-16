@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
@@ -62,7 +63,7 @@ namespace Assets.Scripts.WorldMap
 
             UpdateMesh();
         }
-
+    
         private void AddMesh_NoUpdate(Mesh mesh, int hash, Vector3 offset)
         {
             int index = MeshHashes.IndexOf(hash);
@@ -103,17 +104,20 @@ namespace Assets.Scripts.WorldMap
 
                 try
                 {
+                    Exception e = new Exception("Error when removing mesh");
+                    
                     // error might occur if some of the below list are empty.
                     // this might be because they were never filled to begin with
-                    Vertices.RemoveRange(vertIndex, size.vertexCount);
-                    Triangles.RemoveRange(triIndex, size.triangleCount);
-                    Colors.RemoveRange(vertIndex, size.vertexCount);
-                    UVs.RemoveRange(vertIndex, size.vertexCount);
+                    Vertices.TryRemoveElementsInRange(vertIndex, size.vertexCount, out e);
+                    Triangles.TryRemoveElementsInRange(triIndex, size.triangleCount, out e);
+                    Colors.TryRemoveElementsInRange(vertIndex, size.vertexCount, out e);
+                    UVs.TryRemoveElementsInRange(vertIndex, size.vertexCount, out e);
+
                 }
                 catch (Exception)
                 {
+                   
                 }
-
                 
                 RemoveFromList(index);
 
@@ -124,6 +128,8 @@ namespace Assets.Scripts.WorldMap
 
             return false;
         }
+
+
 
 
         public void AddMesh(Mesh mesh, int hash, Vector3 offset)

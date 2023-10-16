@@ -1,23 +1,15 @@
 ﻿using Assets.Scripts.Miscellaneous;
-using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using Unity.VisualScripting;
-using UnityEditor;
 using UnityEngine;
-using UnityEngine.Rendering;
-using UnityEngine.UIElements;
 using static Assets.Scripts.WorldMap.Biosphere.SurfaceBody;
 using static Assets.Scripts.WorldMap.GridManager;
 using static Assets.Scripts.WorldMap.HexTile;
-using static UnityEditor.FilePathAttribute;
-using static UnityEngine.Mesh;
-using Debug = UnityEngine.Debug;
+using static Assets.Scripts.Miscellaneous.ExtensionMethods;
+using static Unity.Collections.AllocatorManager;
 
 namespace Assets.Scripts.WorldMap
 {
@@ -36,18 +28,19 @@ namespace Assets.Scripts.WorldMap
         public static Material InstanceMaterial;
 
         public static BiomeVisual BiomeVisual;
-        
+
         public List<HexTile> hexes;
-        private ConcurrentBag<HexTile> conHexes;
 
         public ConcurrentDictionary<Vector2Int, HexTile> hexDictionary = new ConcurrentDictionary<Vector2Int, HexTile>();
 
-        public ConcurrentDictionary<BiomeProperties, List<HexTile>> biomeTiles = new ConcurrentDictionary<BiomeProperties, List<HexTile>>();
+        public Dictionary<BiomeProperties, List<HexTile>> biomeTiles = new Dictionary<BiomeProperties, List<HexTile>>();
+
+        public ConcurrentDictionary<BiomeProperties, ConcurrentBag<HexTile>> bt = new ConcurrentDictionary<BiomeProperties, ConcurrentBag<HexTile>>();
 
         public Dictionary<BiomeProperties, FusedMesh> biomeFusedMeshes = new Dictionary<BiomeProperties, FusedMesh>();
 
-        public List<Material> materials = new List<Material>();
-        List<MaterialPropertyBlock> blocks = new List<MaterialPropertyBlock>();
+        private List<Material> materials = new List<Material>();
+        private List<MaterialPropertyBlock> blocks = new List<MaterialPropertyBlock>();
 
         // the highlight layer has to be above the base layer.
         // how high above do u want it to be
@@ -57,6 +50,7 @@ namespace Assets.Scripts.WorldMap
         // you must be aware that technically speaking, all these chunks are at position (0,0). It is their meshes/hexes that are place appriopriately
         public Vector2Int StartPosition;
         public BoundsInt ChunkBounds;
+        private Bounds boundsCheck;
 
         RenderParams renderParams;
         RenderParams instanceParam;
@@ -78,18 +72,18 @@ namespace Assets.Scripts.WorldMap
             meshFilter.mesh.MarkDynamic();
         }
 
+
+
         public void Initialize(BoundsInt aBounds)
         {
             ChunkBounds = aBounds;
             ChunkBounds.ClampToBounds(aBounds);
 
             hexes = new List<HexTile>(aBounds.size.x * aBounds.size.y);
-            
-            // the reason we use a concurrent bag is because it is thread safe
-            // thus you can add to it from multiple from threads
-            conHexes = new ConcurrentBag<HexTile>();
 
             HighlightedHexes = new FusedMesh();
+
+            boundsCheck = new Bounds(ChunkBounds.center, ChunkBounds.size);
         }
 
         public bool IsInChunk(HexTile hex)
@@ -105,9 +99,8 @@ namespace Assets.Scripts.WorldMap
         public bool IsInChunk(int x, int y)
         {
             // its wrong for some reason, idk why but you must use bounds
-            Bounds hey = new Bounds(ChunkBounds.center, ChunkBounds.size);
 
-            if (hey.Contains(new Vector3Int(x, y, 0)))
+            if (boundsCheck.Contains(new Vector3Int(x, y, 0)))
             {
                 return true;
             }
@@ -118,93 +111,32 @@ namespace Assets.Scripts.WorldMap
         {
             // the reason we use a concurrent bag is because it is thread safe
             // thus you can add to it from multiple from threads
-
-            conHexes.Add(hex);
+            
             hexDictionary.TryAdd(hex.GridCoordinates, hex);
-        }
 
-        Dictionary<BiomeProperties, List<CombineInstance>> subMeshes = new Dictionary<BiomeProperties, List<CombineInstance>>();
-
-        public void DrawMesh()
-        {
-            subMeshes.Clear();
-            hexes = conHexes.ToList();
-            SplitDictionary();
-            FuseMeshes();
-           // CombineMeshes();
+            if (bt.TryGetValue(hex.HexBiomeProperties,
+                                    out ConcurrentBag<HexTile> hexes))
+            {
+                hexes.Add(hex);
+            }
+            else
+            {
+                hexes = new ConcurrentBag<HexTile>();
+                hexes.Add(hex);
+                bt.TryAdd(hex.HexBiomeProperties, hexes);
+            }
         }
-        
         private void SplitDictionary()
         {
-            //List<CombineInstance> tempCombine = new List<CombineInstance>();
-            //CombineInstance instance;
-
-            //subMeshes.Clear();
-
-            foreach (HexTile hex in hexDictionary.Values)
-            {
-                if (biomeTiles.TryGetValue(hex.HexBiomeProperties,
-                                    out List<HexTile> hexes))
-                {
-                    hexes.Add(hex);
-                }
-                else
-                {
-                    hexes = new List<HexTile>();
-                    hexes.Add(hex);
-                    biomeTiles.TryAdd(hex.HexBiomeProperties, hexes);
-
-                    //tempCombine = new List<CombineInstance>();
-                    //subMeshes.Add(hex.HexBiomeProperties, tempCombine);
-                }
-
-                //instance = new CombineInstance();
-
-                //instance.mesh = hex.DrawMesh();
-
-                //List<Color> colors = new List<Color>();
-
-                //for (int c = 0; c < instance.mesh.vertexCount; c++)
-                //{
-                //    colors.Add(hex.HexBiomeProperties.BiomeColor);
-                //}
-
-                //instance.mesh.SetColors(colors);
-
-                //instance.transform = Matrix4x4.Translate(hex.Position);
-                //tempCombine.Add(instance);
-            }
+            biomeTiles = bt.ToDictionary(x => x.Key, x => x.Value.ToList());
+            bt.Clear();
         }
 
-        private void CombineMeshes()
+        public void IniaiteDrawProtocol()
         {
-            Mesh mesh = new Mesh();
-
-            Mesh preMesh;
-
-            List<CombineInstance> prelist = new List<CombineInstance>();
-
-            // combine all the meshes of thesame biome into one
-            foreach (List<CombineInstance> item in subMeshes.Values)
-            {
-                CombineInstance subInstance = new CombineInstance();
-                preMesh = new Mesh();
-
-                preMesh.CombineMeshes(item.ToArray());
-
-                subInstance.mesh = preMesh;
-                
-                prelist.Add(subInstance);
-            }
-
-            mesh.CombineMeshes(prelist.ToArray(), false, false);
-            
-            SetMaterialProperties();
-
-            SetMaterialPropertyBlocks();
-
-            GetComponent<MeshFilter>().mesh = mesh;
-            GetComponent<MeshCollider>().sharedMesh = mesh;
+            hexes = hexDictionary.Values.ToList();
+            SplitDictionary();
+            FuseMeshes();
         }
 
         private void FuseMeshes()
@@ -212,14 +144,36 @@ namespace Assets.Scripts.WorldMap
             List<Mesh> meshes = new List<Mesh>();
             List<int> hashes = new List<int>();
             List<Vector3> offsets = new List<Vector3>();
-            
+
+            // the below loop accounts for 90% of the time taken for this method 
+            // this entire method alone accounts for 60% of the time taken to draw the entire map
             foreach (KeyValuePair<BiomeProperties, List<HexTile>> biomes in biomeTiles)
             {
                 ExtractData(biomes.Value);
 
-                biomeFusedMeshes.Add(biomes.Key, new FusedMesh(meshes, hashes, offsets));
+                biomeFusedMeshes.Add(biomes.Key,
+                    new FusedMesh(meshes, hashes, offsets));
             }
 
+            DrawMesh();
+
+            void ExtractData(List<HexTile> hexes)
+            {
+                meshes.Clear();
+                hashes.Clear();
+                offsets.Clear();
+
+                foreach (HexTile hex in hexes)
+                {
+                    meshes.Add(hex.DrawMesh());
+                    hashes.Add(hex.GetHashCode());
+                    offsets.Add(hex.Position);
+                }
+            }
+        }
+
+        private void DrawMesh()
+        {
             // The downside of this is that every time you change the mesh of any fused mesh you have to recombine ALL the other meshes
             Mesh mainMeshes = FusedMesh.CombineToSubmesh(
                 biomeFusedMeshes.Values.ToList());
@@ -230,22 +184,7 @@ namespace Assets.Scripts.WorldMap
 
             GetComponent<MeshFilter>().mesh = mainMeshes;
             GetComponent<MeshCollider>().sharedMesh = mainMeshes;
-
-            void ExtractData(List<HexTile> hexes)
-            {
-                meshes.Clear();
-                hashes.Clear();
-                offsets.Clear();
-                
-                foreach (HexTile hex in hexes)
-                {
-                    meshes.Add(hex.DrawMesh());
-                    hashes.Add(hex.GetHashCode());
-                    offsets.Add(hex.Position);
-                }
-            }
         }
-
 
         /// <summary>
         /// Since we combined all of the individual meshes into one, there exist only one collider. THus we need to find the hex that was clicked on base on the position. 
@@ -283,14 +222,14 @@ namespace Assets.Scripts.WorldMap
                 float shortestDistance = float.MaxValue;
 
                 HexTile posHex = null;
-                
+
                 foreach (Vector2Int item in coords)
                 {
                     posHex = null;
 
                     hexDictionary.TryGetValue(item, out posHex);
 
-                    if(posHex == null)
+                    if (posHex == null)
                     {
                         continue;
                     }
@@ -311,10 +250,26 @@ namespace Assets.Scripts.WorldMap
             }
         }
 
+        private void RemoveHexFromLists(HexTile hex)
+        {
+            hexDictionary.TryRemove(hex.GridCoordinates, out HexTile hexTile);
+
+            biomeTiles.Remove(hex.HexBiomeProperties);
+        }
+
+        public void RemoveHex(HexTile hex)
+        {
+            RemoveHexFromLists(hex);
+
+            biomeFusedMeshes[hex.HexBiomeProperties].RemoveMesh(hex.GetHashCode());
+
+            DrawMesh();
+
+        }
 
         public void HighlightHex(HexTile hex)
         {
-            HighlightedHexes.AddMesh(hexSettings.GetOuterHighlighter(), 
+            HighlightedHexes.AddMesh(hexSettings.GetOuterHighlighter(),
                 hex.GetHashCode(), hex.Position);
 
             meshFilter.mesh = HighlightedHexes.Mesh;
@@ -326,9 +281,12 @@ namespace Assets.Scripts.WorldMap
 
             meshFilter.mesh = HighlightedHexes.Mesh;
 
-        } 
+        }
         private void SetMaterialProperties()
         {
+            blocks.Clear();
+            materials.Clear();
+
             if (BiomeVisual == BiomeVisual.Color)
             {
                 SetMaterialColor();
@@ -371,7 +329,7 @@ namespace Assets.Scripts.WorldMap
         public void SetMaterialPropertyBlocks()
         {
             Renderer renderer = GetComponent<Renderer>();
-            
+
             int count = renderer.materials.Length;
 
             if (blocks.Count != count)
@@ -388,92 +346,94 @@ namespace Assets.Scripts.WorldMap
 
         #region The Below is for Gpu Mesh generation, Dont touch unless you know what you are doing
 
-            // the limit for graphic instances is 500
-            private static int maxLimit = 500;
-            List<List<MyInstanceData>> data2 = new List<List<MyInstanceData>>();
-            List<List<Vector4>> color2 = new List<List<Vector4>>();
-            MyInstanceData[] data;
-            public struct MyInstanceData
-            {
-                public Matrix4x4 objectToWorld; // We must specify object-to-world transformation for each instance
-                public uint renderingLayerMask; // In addition we also like to specify rendering layer mask per instence.
+        // the limit for graphic instances is 1000
+        private static int maxLimit = 500;
+        List<List<MyInstanceData>> data2 = new List<List<MyInstanceData>>();
+        List<List<Vector4>> color2 = new List<List<Vector4>>();
+        MyInstanceData[] data;
+        public struct MyInstanceData
+        {
+            public Matrix4x4 objectToWorld; // We must specify object-to-world transformation for each instance
+            public uint renderingLayerMask; // In addition we also like to specify rendering layer mask per instence.
 
-                public int hexIndex;
-            };
+            public int hexIndex;
+        };
 
-            private void SetData()
-            {
-                // Data
-                data = new MyInstanceData[hexes.Count];
-                data2.Clear();
+        private void SetData()
+        {
+            // Data
+            data = new MyInstanceData[hexes.Count];
+            data2.Clear();
 
-                Parallel.For(0, hexes.Count, x =>
+            Vector3 transformOffset = transform.position;
+
+            Parallel.For(0, hexes.Count, x =>
                 {
                     MyInstanceData d = new MyInstanceData();
-                    d.objectToWorld = Matrix4x4.Translate(hexes[x].Position + transform.position);
+                    d.objectToWorld = Matrix4x4.Translate(hexes[x].Position + transformOffset);
                     d.renderingLayerMask = 0;
 
                     d.hexIndex = x;
                     data[x] = d;
                 });
 
-                while (data.Any())
-                {
-                    data2.Add(data.Take(maxLimit).ToList());
-                
-                    data = data.Skip(maxLimit).ToArray();
-                }
-            }
-
-            private void SetColor()
+            while (data.Any())
             {
-                color2.Clear();
-                Vector4[] aColor;
-            
-                foreach (List<MyInstanceData> item in data2)
-                {
-                    aColor = new Vector4[item.Count];
+                data2.Add(data.Take(maxLimit).ToList());
 
-                    Parallel.For(0, item.Count, x =>
-                    {
-                        aColor[x] = 
-                        hexes[item[x].hexIndex].HexBiomeProperties.BiomeColor;
-                    });
-
-                    color2.Add(aColor.ToList());
-                }
+                data = data.Skip(maxLimit).ToArray();
             }
+        }
 
-            Mesh instanceMesh;
-            MaterialPropertyBlock instanceBlock;
-            public void RenderMesh()
+        private void SetColor()
+        {
+            color2.Clear();
+            Vector4[] aColor;
+
+            foreach (List<MyInstanceData> item in data2)
             {
-                if (data2.Count == 0)
+                aColor = new Vector4[item.Count];
+
+                Parallel.For(0, item.Count, x =>
                 {
-                    SetData();
-                    instanceMesh = hexes[0].DrawMesh();
-                }
+                    aColor[x] =
+                    hexes[item[x].hexIndex].HexBiomeProperties.BiomeColor;
+                });
 
-                SetColor();
+                color2.Add(aColor.ToList());
+            }
+        }
 
-                int i = 0;
-
-                foreach (List<MyInstanceData> item in data2)
-                {
-                    instanceBlock = new MaterialPropertyBlock();
-
-                    Vector4[] v = color2.ElementAt(i).ToArray();
-
-                    instanceBlock.SetVectorArray("_MeshColors", v);
-                    instanceParam.matProps = instanceBlock;
-
-                    Graphics.RenderMeshInstanced(instanceParam, instanceMesh, 0, item);
-
-                    i++;
-                }
+        Mesh instanceMesh;
+        MaterialPropertyBlock instanceBlock;
+        public void RenderMesh()
+        {
+            if (data2.Count == 0)
+            {
+                SetData();
+                instanceMesh = hexes[0].DrawMesh();
             }
 
-            #endregion
+            SetColor();
+
+            int i = 0;
+
+            foreach (List<MyInstanceData> item in data2)
+            {
+                instanceBlock = new MaterialPropertyBlock();
+
+                Vector4[] v = color2.ElementAt(i).ToArray();
+
+                instanceBlock.SetVectorArray("_MeshColors", v);
+                instanceParam.matProps = instanceBlock;
+
+                Graphics.RenderMeshInstanced(instanceParam, instanceMesh, 0, item);
+
+                i++;
+            }
+        }
+
+        #endregion
 
     }
 
@@ -481,7 +441,7 @@ namespace Assets.Scripts.WorldMap
     public struct SimplifiedHex
     {
         public List<HexTile> hexRows;
-        
+
         public List<Vector3> Vertices;
         public List<int> Triangles;
         List<Vector2> UV;
@@ -530,7 +490,6 @@ namespace Assets.Scripts.WorldMap
                 };
             }
         }
-    
 
         private void Simplify()
         {
@@ -550,14 +509,14 @@ namespace Assets.Scripts.WorldMap
                 hex = hexRows[i];
 
                 // normally we would set the edges incrementally, becuase the hex might have different materials im between
-                
+
                 if (i == 0)
                 {
                     leftTop = hex.GetWorldVertexPosition(5);
                     leftBot = hex.GetWorldVertexPosition(4);
                 }
 
-                if(i == hexRows.Count - 1)
+                if (i == hexRows.Count - 1)
                 {
                     rightTop = hex.GetWorldVertexPosition(1);
                     rightBot = hex.GetWorldVertexPosition(2);
@@ -589,7 +548,7 @@ namespace Assets.Scripts.WorldMap
 
             Vertices.Add(rightBot); // - 2
             UV.Add(GetUV(2, hexRows.Count));
-            
+
             Vertices.Add(rightTop); // -1
             UV.Add(GetUV(1, hexRows.Count));
 
