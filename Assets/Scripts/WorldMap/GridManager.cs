@@ -129,7 +129,7 @@ namespace Assets.Scripts.WorldMap
 
             // be advised this time is when we drew the chunks using the coroutine
             // What ultimately matters is the time it takes to draw the chunks, which can be circumvented by using a coroutine to draw them bit by bit, or else the game will freeze for a while depending on the size of the map
-            
+
             // Generation Time: 14.976
 
             Stopwatch sw = new Stopwatch();
@@ -158,7 +158,7 @@ namespace Assets.Scripts.WorldMap
 
             StartCoroutine(SpawnChunkEveryXSeconds(0));
 
-            
+
 
             SetBounds();
 
@@ -182,9 +182,9 @@ namespace Assets.Scripts.WorldMap
 
         private IEnumerator SpawnChunkEveryXSeconds(float time)
         {
-            for(int i = 0; i < hexChunks.Count; i++)
+            for (int i = 0; i < hexChunks.Count; i++)
             {
-                hexChunks[i].IniaiteDrawProtocol();    
+                hexChunks[i].IniaiteDrawProtocol();
                 yield return new WaitForSeconds(time);
             }
         }
@@ -390,7 +390,8 @@ namespace Assets.Scripts.WorldMap
             if (!HighlightedHexes.ContainsKey(hex.Hash))
             {
                 HighlightedHexes.Add(hex.Hash, hex);
-                hex.Highlight();
+               // hex.Highlight();
+                hex.ActivateBorder();
             }
         }
 
@@ -403,8 +404,9 @@ namespace Assets.Scripts.WorldMap
 
             if (HighlightedHexes.ContainsKey(hex.Hash))
             {
-                HighlightedHexes.Remove(hex.Hash);
-                hex.UnHighlight();
+                //HighlightedHexes.Remove(hex.Hash);
+               // hex.UnHighlight();
+                hex.DeactivateBorder();
             }
         }
 
@@ -460,20 +462,35 @@ namespace Assets.Scripts.WorldMap
                     chunk.HighlightHex(hex);
                 }
             }
-
-            public void Remove()
-            {
-                if (chunk != null && hex != null)
-                {
-                    chunk.RemoveHex(hex);
-                    ResetData();
-                }
-            }
             public void UnHighlight()
             {
                 if (chunk != null && hex != null)
                 {
                     chunk.UnHighlightHex(hex);
+                    ResetData();
+                }
+            }
+
+            public void ActivateBorder()
+            {
+                if (!IsNullOrEmpty())
+                {
+                    chunk.ActivateHexBorder(hex);
+                }
+            }
+
+            public void DeactivateBorder()
+            {
+                if (!IsNullOrEmpty())
+                {
+                    chunk.DeactivateHexBorder(hex);
+                }
+            }
+            public void Remove()
+            {
+                if (chunk != null && hex != null)
+                {
+                    chunk.RemoveHex(hex);
                     ResetData();
                 }
             }

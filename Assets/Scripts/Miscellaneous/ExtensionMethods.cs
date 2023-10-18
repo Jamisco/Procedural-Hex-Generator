@@ -111,5 +111,26 @@ namespace Assets.Scripts.Miscellaneous
                 Debug.Log($"{message} {timeInMilliseconds / 1000f} seconds");
             }
         }
+
+        public static Mesh CloneMesh(this Mesh parent)
+        {
+            Mesh mesh = new Mesh();
+            mesh.vertices = parent.vertices;
+            mesh.triangles = parent.triangles;
+            mesh.uv = parent.uv;
+            mesh.normals = parent.normals;
+            mesh.tangents = parent.tangents;
+            mesh.colors = parent.colors;
+            mesh.bindposes = parent.bindposes;
+            mesh.boneWeights = parent.boneWeights;
+            mesh.subMeshCount = parent.subMeshCount;
+            mesh.name = parent.name;
+            mesh.bounds = parent.bounds;
+            mesh.indexFormat = parent.indexFormat;
+            mesh.RecalculateBounds();
+            mesh.RecalculateNormals();
+            mesh.RecalculateTangents();
+            return mesh;
+        }
     }
 }
