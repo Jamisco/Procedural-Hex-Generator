@@ -35,9 +35,15 @@ Shader "Custom/InstanceShader"
 
                 o.vertex = UnityObjectToClipPos(v.vertex);
 
-                // ignore the error
-                o.color = _MeshColors[unity_InstanceID];
+                // accesing the instance id must be done inside this block!
+                #ifdef INSTANCING_ON
+                    i = v.instanceID;
                 
+                #endif
+
+                // if you get an error, that is because you are tring to access the instance if outside the #ifdef INSTANCING_ON block,
+                // see  UNITY_VERTEX_INPUT_INSTANCE_ID in link https://docs.unity3d.com/2021.2/Documentation/Manual/gpu-instancing-shader.html
+                o.color = _MeshColors[i];
                 return o;
             }
 

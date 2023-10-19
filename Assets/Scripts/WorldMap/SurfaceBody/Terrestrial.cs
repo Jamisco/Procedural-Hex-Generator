@@ -5,7 +5,6 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using static Assets.Scripts.WorldMap.PlanetGenerator;
-using static UnityEditor.Progress;
 
 namespace Assets.Scripts.WorldMap.Biosphere
 {

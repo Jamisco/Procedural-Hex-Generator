@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.XR;
-using static UnityEditor.Searcher.SearcherWindow.Alignment;
 
 namespace Assets.Scripts.WorldMap
 {

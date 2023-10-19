@@ -97,19 +97,28 @@ namespace Assets.Scripts.Miscellaneous
         /// <param name="timeInMilliseconds"></param>
         public static void LogTimer(string message, float timeInMilliseconds)
         {
+            Debug.Log(ParseLogTimer(message, timeInMilliseconds));
+        }
+
+        public static string ParseLogTimer(string message, float timeInMilliseconds)
+        {
             int minutes;
             float seconds;
+
+            string log = "";
 
             if (timeInMilliseconds >= 60000)
             {
                 minutes = (int)(timeInMilliseconds / 60000);
                 seconds = (timeInMilliseconds % 60000) / 1000f;
-                Debug.Log($"{message} {minutes} minutes {seconds} seconds");
+                log = $"{message} {minutes} minutes {seconds} seconds";
             }
             else
             {
-                Debug.Log($"{message} {timeInMilliseconds / 1000f} seconds");
+                log = $"{message} {timeInMilliseconds / 1000f} seconds";
             }
+
+            return log;
         }
 
         public static Mesh CloneMesh(this Mesh parent)

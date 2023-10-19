@@ -75,7 +75,7 @@ namespace Assets.Scripts.WorldMap
             MapBounds = new Bounds(center, end - start);
         }
         private void Awake()
-        {
+        {   
             HexTiles = new Dictionary<Axial, HexTile>();
 
             hexChunks = new List<HexChunk>();
@@ -105,6 +105,8 @@ namespace Assets.Scripts.WorldMap
         }
 
         #region Hex Generation Methods
+
+        public float time;
         public void GenerateGridChunks()
         {
             // Time starts for 300 x 300
@@ -131,6 +133,8 @@ namespace Assets.Scripts.WorldMap
             // What ultimately matters is the time it takes to draw the chunks, which can be circumvented by using a coroutine to draw them bit by bit, or else the game will freeze for a while depending on the size of the map
 
             // Generation Time: 14.976
+
+            time = 0;
 
             Stopwatch sw = new Stopwatch();
             sw.Start();
@@ -163,7 +167,7 @@ namespace Assets.Scripts.WorldMap
             SetBounds();
 
             sw.Stop();
-
+            time = sw.ElapsedMilliseconds;
             LogTimer("Generation Time: ", sw.ElapsedMilliseconds);
         }
         public void InitializeChunks()
@@ -194,7 +198,7 @@ namespace Assets.Scripts.WorldMap
             hexChunks.Clear();
 
             // 6 for the base hex, 6 for each slope on each side of the hex
-            int maxHexVertCount = 42;
+            int maxHexVertCount = 6;
 
             // the max vert count of combined mesh. Unity side limit
             int maxVertCount = 65535;
