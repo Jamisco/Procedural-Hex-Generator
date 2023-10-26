@@ -128,13 +128,16 @@ namespace Assets.Scripts.WorldMap
             return false;
         }
 
+
+
+
         public void AddMesh(Mesh mesh, int hash, Vector3 offset)
         {
             AddMesh_NoUpdate(mesh, hash, offset);
 
             UpdateMesh();
         }
-        public bool RemoveMesh(int hash, int position = -1)
+        public void RemoveMesh(int hash, int position = -1)
         {
             bool removed = RemoveMesh_NoUpdate(hash, position);
 
@@ -143,7 +146,6 @@ namespace Assets.Scripts.WorldMap
                 UpdateMesh();
             }
 
-            return removed;
         }
 
         private void AddToList(int hash, int vertexCount, int triangleCount)
@@ -258,6 +260,14 @@ namespace Assets.Scripts.WorldMap
             newMesh.CombineMeshes(tempArray);
 
             return newMesh;
+        }
+
+        public static void CloneMesh(Mesh parent, ref Mesh clone)
+        {
+            clone.vertices = parent.vertices;
+            clone.triangles = parent.triangles;
+            clone.colors = parent.colors;
+            clone.uv = parent.uv;
         }
     }
 }

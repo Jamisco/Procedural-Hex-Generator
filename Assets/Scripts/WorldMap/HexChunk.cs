@@ -45,7 +45,6 @@ namespace Assets.Scripts.WorldMap
         // the highlight layer has to be above the base layer.
         // how high above do u want it to be
         private static readonly Vector3 HighlightLayerOffset = new Vector3(0, .001f, 0);
-        private static readonly Vector3 BorderLayerOffset = new Vector3(0, .002f, 0);
 
 
         // you must be aware that technically speaking, all these chunks are at position (0,0). It is their meshes/hexes that are place appriopriately
@@ -56,32 +55,21 @@ namespace Assets.Scripts.WorldMap
         RenderParams renderParams;
         RenderParams instanceParam;
 
-        MeshFilter BorderMeshFilter;
-        GameObject BorderLayer;
-
-
-        MeshFilter HighlightMeshFilter;
+        MeshFilter meshFilter;
         GameObject HighlightLayer;
-
         FusedMesh HighlightedHexes;
-        FusedMesh ActiveHexBorders;
 
         private void Awake()
         {
             renderParams = new RenderParams(MainMaterial);
             instanceParam = new RenderParams(InstanceMaterial);
 
-            BorderLayer = gameObject.GetGameObject("BorderLayer");
             HighlightLayer = gameObject.GetGameObject("HighlightLayer");
 
-            BorderLayer.transform.position += BorderLayerOffset;
             HighlightLayer.transform.position += HighlightLayerOffset;
 
-            HighlightMeshFilter = HighlightLayer.GetComponent<MeshFilter>();
-            HighlightMeshFilter.mesh.MarkDynamic();
-
-            BorderMeshFilter = BorderLayer.GetComponent<MeshFilter>();
-            BorderMeshFilter.mesh.MarkDynamic();
+            meshFilter = HighlightLayer.GetComponent<MeshFilter>();
+            meshFilter.mesh.MarkDynamic();
         }
 
 
@@ -94,7 +82,6 @@ namespace Assets.Scripts.WorldMap
             hexes = new List<HexTile>(aBounds.size.x * aBounds.size.y);
 
             HighlightedHexes = new FusedMesh();
-            ActiveHexBorders = new FusedMesh();
 
             boundsCheck = new Bounds(ChunkBounds.center, ChunkBounds.size);
         }
@@ -124,7 +111,7 @@ namespace Assets.Scripts.WorldMap
         {
             // the reason we use a concurrent bag is because it is thread safe
             // thus you can add to it from multiple from threads
-
+            
             hexDictionary.TryAdd(hex.GridCoordinates, hex);
 
             if (bt.TryGetValue(hex.HexBiomeProperties,
@@ -276,50 +263,25 @@ namespace Assets.Scripts.WorldMap
 
             biomeFusedMeshes[hex.HexBiomeProperties].RemoveMesh(hex.GetHashCode());
 
-            UnHighlightHex(hex);
-
-            DeactivateHexBorder(hex);
-
             DrawMesh();
+
         }
 
         public void HighlightHex(HexTile hex)
         {
-            HighlightedHexes.AddMesh(hexSettings.GetInnerHighlighter(),
+            HighlightedHexes.AddMesh(hexSettings.GetOuterHighlighter(),
                 hex.GetHashCode(), hex.Position);
 
-            HighlightMeshFilter.mesh = HighlightedHexes.Mesh;
+            meshFilter.mesh = HighlightedHexes.Mesh;
         }
+
         public void UnHighlightHex(HexTile hex)
         {
-            bool removed = HighlightedHexes.RemoveMesh(hex.GetHashCode());
+            HighlightedHexes.RemoveMesh(hex.GetHashCode());
 
-            if (removed)
-            {
-                HighlightMeshFilter.mesh = HighlightedHexes.Mesh;
-            }
+            meshFilter.mesh = HighlightedHexes.Mesh;
+
         }
-
-        public void ActivateHexBorder(HexTile hex)
-        {
-            int[] sides = { 0, 1, 2, 3, 4, 5 };
-
-            ActiveHexBorders.AddMesh(hexSettings.GetOuterHighlighter(sides),
-                                     hex.GetHashCode(), hex.Position);
-
-            BorderMeshFilter.mesh = ActiveHexBorders.Mesh;
-        }
-
-        public void DeactivateHexBorder(HexTile hex)
-        {
-            bool removed = ActiveHexBorders.RemoveMesh(hex.GetHashCode());
-
-            if(removed)
-            {
-                BorderMeshFilter.mesh = ActiveHexBorders.Mesh;
-            }
-        }
-
         private void SetMaterialProperties()
         {
             blocks.Clear();
