@@ -57,7 +57,7 @@ namespace TMPro.Examples
                 // Get the index of the first vertex used by this text element.
                 int vertexIndex = textInfo.characterInfo[currentCharacter].vertexIndex;
 
-                // Only change the vertex color if the text element is visible.
+                // Only change the vertex BiomeColor if the text element is visible.
                 if (textInfo.characterInfo[currentCharacter].isVisible)
                 {
                     c0 = new Color32((byte)Random.Range(0, 255), (byte)Random.Range(0, 255), (byte)Random.Range(0, 255), 255);

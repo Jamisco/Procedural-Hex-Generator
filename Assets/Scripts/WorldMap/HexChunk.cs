@@ -10,6 +10,7 @@ using static Assets.Scripts.WorldMap.GridManager;
 using static Assets.Scripts.WorldMap.HexTile;
 using static Assets.Scripts.Miscellaneous.ExtensionMethods;
 using static Unity.Collections.AllocatorManager;
+using static Assets.Scripts.WorldMap.Biosphere.SurfaceBody.BiomeData;
 
 namespace Assets.Scripts.WorldMap
 {
@@ -27,7 +28,7 @@ namespace Assets.Scripts.WorldMap
         public static Material MainMaterial;
         public static Material InstanceMaterial;
 
-        public static BiomeVisual BiomeVisual;
+        public static BiomeVisualOption BiomeVisual;
 
         public List<HexTile> hexes;
 
@@ -126,30 +127,52 @@ namespace Assets.Scripts.WorldMap
             // thus you can add to it from multiple from threads
 
             hexDictionary.TryAdd(hex.GridCoordinates, hex);
+            
+            BiomeProperties props;
 
-            if (bt.TryGetValue(hex.HexBiomeProperties,
-                                    out ConcurrentBag<HexTile> hexes))
+            props = hex.HexBiomeData.GetBiomeProperties(BiomeVisual);
+
+            if (bt.ContainsKey(props))
             {
-                hexes.Add(hex);
+                bt[props].Add(hex);
             }
             else
             {
-                hexes = new ConcurrentBag<HexTile>();
-                hexes.Add(hex);
-                bt.TryAdd(hex.HexBiomeProperties, hexes);
+                bt.TryAdd(props, new ConcurrentBag<HexTile>() { hex });
             }
         }
         private void SplitDictionary()
         {
             biomeTiles = bt.ToDictionary(x => x.Key, x => x.Value.ToList());
-            bt.Clear();
         }
 
         public void IniaiteDrawProtocol()
-        {
-            hexes = hexDictionary.Values.ToList();
+        {    
             SplitDictionary();
             FuseMeshes();
+        }
+
+        public Mesh CombineToSubmesh(List<HexTile> hexes)
+        {
+            Mesh newMesh = new Mesh();
+
+            CombineInstance[] tempArray = new CombineInstance[hexes.Count];
+
+            for (int i = 0; i < hexes.Count; i++)
+            {
+                CombineInstance subInstance = new CombineInstance();
+
+                subInstance.mesh = hexes[i].DrawMesh();
+                Vector3 transOffset = new Vector3(StartPosition.x, StartPosition.y, 0);
+                
+                subInstance.transform = Matrix4x4.Translate(hexes[i].Position + transOffset);
+
+                tempArray[i] = subInstance;
+            }
+
+            newMesh.CombineMeshes(tempArray, false, true);
+
+            return newMesh;
         }
 
         private void FuseMeshes()
@@ -160,6 +183,10 @@ namespace Assets.Scripts.WorldMap
 
             // the below loop accounts for 90% of the time taken for this method 
             // this entire method alone accounts for 60% of the time taken to draw the entire map
+
+            // drawing the hexes individuall is horrendouesly ineffective
+            // a 100 x 100 map with 100 hexes per chunk averages 5 - 10 fps
+            
             foreach (KeyValuePair<BiomeProperties, List<HexTile>> biomes in biomeTiles)
             {
                 ExtractData(biomes.Value);
@@ -188,8 +215,9 @@ namespace Assets.Scripts.WorldMap
         private void DrawMesh()
         {
             // The downside of this is that every time you change the mesh of any fused mesh you have to recombine ALL the other meshes
-            Mesh mainMeshes = FusedMesh.CombineToSubmesh(
-                biomeFusedMeshes.Values.ToList());
+            // thankfully, it is not that expensive to do so, accounts for at most 10% of the time taken to draw the entire map
+            Mesh mainMeshes =
+                FusedMesh.CombineToSubmesh(biomeFusedMeshes.Values.ToList());
 
             SetMaterialProperties();
 
@@ -198,7 +226,6 @@ namespace Assets.Scripts.WorldMap
             GetComponent<MeshFilter>().mesh = mainMeshes;
             GetComponent<MeshCollider>().sharedMesh = mainMeshes;
         }
-
         /// <summary>
         /// Since we combined all of the individual meshes into one, there exist only one collider. THus we need to find the hex that was clicked on base on the position. 
         /// We do this by getting all the possible grid positions within the vicinity of the mouse click and then we measure between the positions of said grid positions and the mouse click position. The grid position with the smallest distance is the one that was clicked on.
@@ -267,14 +294,18 @@ namespace Assets.Scripts.WorldMap
         {
             hexDictionary.TryRemove(hex.GridCoordinates, out HexTile hexTile);
 
-            biomeTiles.Remove(hex.HexBiomeProperties);
+            BiomeProperties props = hex.HexBiomeData.GetBiomeProperties(BiomeVisual);
+
+            biomeTiles.Remove(props);
         }
 
         public void RemoveHex(HexTile hex)
         {
             RemoveHexFromLists(hex);
 
-            biomeFusedMeshes[hex.HexBiomeProperties].RemoveMesh(hex.GetHashCode());
+            BiomeProperties props = hex.HexBiomeData.GetBiomeProperties(BiomeVisual);
+
+            biomeFusedMeshes[props].RemoveMesh(hex.GetHashCode());
 
             UnHighlightHex(hex);
 
@@ -283,6 +314,45 @@ namespace Assets.Scripts.WorldMap
             DrawMesh();
         }
 
+        public void ChangeColor(HexTile hex, Color newColor)
+        {
+            // It must be understood that you can either display materials or colors for the fusions.
+            // if you use materials, changing BiomeColor wont have any visual effects
+            // if you use colors, use must then remove the hex from the fused mesh it belongs to and then add it to a fused mesh of thesame BiomeColor or create a new fused mesh for the new BiomeColor
+
+            if (hex.HexBiomeData.BiomeColor == newColor)
+            {
+                // there are thesame BiomeColor
+                return;
+            }
+            
+            //BiomeProperties props = hex.HexBiomeData.GetBiomeProperties;
+
+            //// first we remove it from the fused mesh it belongs too,
+            //biomeFusedMeshes[props].RemoveMesh(hex.GetHashCode());
+
+            //// then we change the BiomeColor of the hex itself
+            //hex.HexBiomeData = new BiomeProperties(newColor);
+
+            //// now see if there is fused mesh with said BiomeColor
+            //KeyValuePair<BiomeProperties, FusedMesh> fused 
+            //    = biomeFusedMeshes.FirstOrDefault(x => x.Key.BiomeColor == newColor);
+
+            //// we would have to change how the hash is calculated,
+            //// since the hexes shared thesame hash based on Biome.
+            //// Ultimately there exist a severe limitation on how the hexes are colored.
+            //// Perhaps its best we fused the material colors and materials into one method and shader.
+            //// or even add a property to Biome meshes stating which material to use
+
+            //if (fused.Value == null)
+            //{
+            //   // biomeFusedMeshes.Add()
+            //}
+            //else
+            //{
+
+            //}
+        }
         public void HighlightHex(HexTile hex)
         {
             HighlightedHexes.AddMesh(hexSettings.GetInnerHighlighter(),
@@ -325,12 +395,13 @@ namespace Assets.Scripts.WorldMap
             blocks.Clear();
             materials.Clear();
 
-            if (BiomeVisual == BiomeVisual.Color)
+            if (BiomeVisual == BiomeVisualOption.Color)
             {
                 SetMaterialColor();
             }
             else
             {
+                //SetMaterialTexture();
                 SetMaterialTexture();
             }
         }
@@ -357,10 +428,10 @@ namespace Assets.Scripts.WorldMap
             {
                 Material newMat = new Material(MainMaterial);
 
-                Texture2D texture = biomeFusedMeshes.Keys.ElementAt(i).BiomeTexture;
+                Texture2D texture = biomeFusedMeshes.Keys.ElementAt(i).SeasonTexture;
 
                 newMat.SetTexture("_MainTex", texture);
-
+               // texture.lerp
                 materials.Add(newMat);
             }
         }
@@ -375,7 +446,7 @@ namespace Assets.Scripts.WorldMap
                 renderer.materials = materials.ToArray();
             }
 
-            // for the time being, this will only adjust the color of the material
+            // for the time being, this will only adjust the BiomeColor of the material
             for (int i = 0; i < blocks.Count; i++)
             {
                 renderer.SetPropertyBlock(blocks[i], i);
@@ -435,7 +506,7 @@ namespace Assets.Scripts.WorldMap
                 Parallel.For(0, item.Count, x =>
                 {
                     aColor[x] =
-                    hexes[item[x].hexIndex].HexBiomeProperties.BiomeColor;
+                    hexes[item[x].hexIndex].HexBiomeData.BiomeColor;
                 });
 
                 color2.Add(aColor.ToList());

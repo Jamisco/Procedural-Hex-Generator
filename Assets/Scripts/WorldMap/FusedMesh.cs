@@ -134,6 +134,12 @@ namespace Assets.Scripts.WorldMap
 
             UpdateMesh();
         }
+        /// <summary>
+        /// Returns true or false if mesh was successfully removed
+        /// </summary>
+        /// <param name="hash"></param>
+        /// <param name="position">The position you want to start searching from </param>
+        /// <returns></returns>
         public bool RemoveMesh(int hash, int position = -1)
         {
             bool removed = RemoveMesh_NoUpdate(hash, position);
@@ -243,6 +249,27 @@ namespace Assets.Scripts.WorldMap
 
             return newMesh;
         }
+
+        public static Mesh CombineToSubmesh(List<Mesh> subMesh)
+        {
+            Mesh newMesh = new Mesh();
+
+            CombineInstance[] tempArray = new CombineInstance[subMesh.Count];
+
+            for (int i = 0; i < subMesh.Count; i++)
+            {
+                CombineInstance subInstance = new CombineInstance();
+
+                subInstance.mesh = subMesh[i];
+
+                tempArray[i] = subInstance;
+            }
+
+            newMesh.CombineMeshes(tempArray, false, false);
+
+            return newMesh;
+        }
+        
         public Mesh CombineToSubmesh(Mesh subMesh)
         {
             Mesh newMesh = new Mesh();

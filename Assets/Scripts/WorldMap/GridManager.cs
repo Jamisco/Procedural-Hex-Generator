@@ -4,7 +4,7 @@ using static Assets.Scripts.WorldMap.HexTile;
 using System.Diagnostics;
 using Debug = UnityEngine.Debug;
 using System;
-using UnityEditor;
+
 using Axial = Assets.Scripts.WorldMap.HexTile.Axial;
 using System.Linq;
 using System.Threading.Tasks;
@@ -17,6 +17,12 @@ using Unity.VisualScripting;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.UIElements.Experimental;
 using System.Collections;
+using Assets.Scripts.WorldMap.Biosphere;
+using static Assets.Scripts.WorldMap.Biosphere.SurfaceBody.BiomeData;
+
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 // Namespace.
 namespace Assets.Scripts.WorldMap
@@ -25,6 +31,7 @@ namespace Assets.Scripts.WorldMap
     public class GridManager : MonoBehaviour
     {
         public HexSettings HexSettings;
+        public BiomeDataStorage BiomeDataStorage;
         public GameObject hexParent;
         public HexChunk hexChunkPrefab;
 
@@ -35,17 +42,17 @@ namespace Assets.Scripts.WorldMap
         public Material InstanceMaterial;
 
         public PlanetGenerator planetGenerator;
-        Planet mainPlanet;
+        private Planet mainPlanet;
 
         private Vector2Int MapSize;
         private Bounds MapBounds;
-        public int ChunkSize;
+        [Tooltip("The Maximum amount of hexes allowed in a chunk. Set this reasonable number because everytime a chunk is modified, the whole thing has to be redrawn. Large chunk will cause significant lag.")]
+        public int MaxHexPerChunk;
 
-        public enum BiomeVisual { Color, Material }
-
-        public BiomeVisual biomeVisual;
+        public BiomeVisualOption biomeVisual;
 
         public Dictionary<int, HexData> HighlightedHexes;
+        public Dictionary<int, HexData> ActivatedBorderHexes;
 
         private void SetGridSettings()
         {
@@ -53,13 +60,12 @@ namespace Assets.Scripts.WorldMap
             HexChunk.InstanceMaterial = InstanceMaterial;
 
             HexChunk.BiomeVisual = biomeVisual;
+            SurfaceBody.SetBiomeData(BiomeDataStorage.GetData());
 
             HexTile.Grid = this;
             HexTile.Planet = planetGenerator;
 
             HexTile.hexSettings = HexSettings;
-
-            planetGenerator.MainPlanet.Initialize();
 
             mainPlanet = planetGenerator.MainPlanet;
             MapSize = mainPlanet.PlanetSize;
@@ -81,6 +87,7 @@ namespace Assets.Scripts.WorldMap
             hexChunks = new List<HexChunk>();
 
             HighlightedHexes = new Dictionary<int, HexData>();
+            ActivatedBorderHexes = new Dictionary<int, HexData>();
 
             SetGridSettings();
 
@@ -97,11 +104,8 @@ namespace Assets.Scripts.WorldMap
             {
                 HighlightOnHover();
             }
-            else
-            {
-                HighlightOnClick();
 
-            }
+            OnMouseClick();
         }
 
         #region Hex Generation Methods
@@ -205,19 +209,26 @@ namespace Assets.Scripts.WorldMap
 
             int maxHexCount = maxVertCount / maxHexVertCount;
 
-            ChunkSize = (int)Mathf.Sqrt(maxHexCount);
-
-            // if the map is small enough such that it can fit in out chunk size, we use the map size instead
-            if (ChunkSize * ChunkSize > MapSize.x * MapSize.y)
+            if (maxHexCount > MaxHexPerChunk && MaxHexPerChunk > 0)
             {
-                // Since all chunks will be squares, we use the smaller of the two map sizes
-                ChunkSize = Mathf.Max(MapSize.x, MapSize.y);
+                maxHexCount = MaxHexPerChunk;
             }
 
-            //ChunkSize -= 1;
+            int chunkSize2Use = 0;
+            
+            chunkSize2Use = (int)Mathf.Sqrt(maxHexCount);
 
-            int chunkCountX = Mathf.CeilToInt((float)MapSize.x / ChunkSize);
-            int chunkCountZ = Mathf.CeilToInt((float)MapSize.y / ChunkSize);
+            // if the map is small enough such that it can fit in out chunk size, we use the map size instead
+            if (chunkSize2Use * chunkSize2Use > MapSize.x * MapSize.y)
+            {
+                // Since all chunks will be squares, we use the smaller of the two map sizes
+                chunkSize2Use = Mathf.Max(MapSize.x, MapSize.y);
+            }
+
+            //chunkSize2Use -= 1;
+
+            int chunkCountX = Mathf.CeilToInt((float)MapSize.x / chunkSize2Use);
+            int chunkCountZ = Mathf.CeilToInt((float)MapSize.y / chunkSize2Use);
 
             HexChunk chunk;
 
@@ -225,18 +236,18 @@ namespace Assets.Scripts.WorldMap
             {
                 for (int x = 0; x < chunkCountX; x++)
                 {
-                    bool inX = (x + 1) * ChunkSize <= MapSize.x;
-                    bool inZ = (z + 1) * ChunkSize <= MapSize.y;
+                    bool inX = (x + 1) * chunkSize2Use <= MapSize.x;
+                    bool inZ = (z + 1) * chunkSize2Use <= MapSize.y;
 
                     Vector3Int start = new Vector3Int();
                     Vector3Int size = new Vector3Int();
 
-                    start.x = x * ChunkSize;
-                    start.y = z * ChunkSize;
+                    start.x = x * chunkSize2Use;
+                    start.y = z * chunkSize2Use;
 
                     if (inX)
                     {
-                        size.x = ChunkSize;
+                        size.x = chunkSize2Use;
                     }
                     else
                     {
@@ -245,7 +256,7 @@ namespace Assets.Scripts.WorldMap
 
                     if (inZ)
                     {
-                        size.y = ChunkSize;
+                        size.y = chunkSize2Use;
                     }
                     else
                     {
@@ -260,7 +271,7 @@ namespace Assets.Scripts.WorldMap
                 }
             }
 
-            //Debug.Log("Chunk Size: " + ChunkSize);
+            //Debug.Log("Chunk Size: " + chunkSize2Use);
             //Debug.Log("Chunk count: " + hexChunks.Count);
         }
         public bool UpdateMap = false;
@@ -342,7 +353,7 @@ namespace Assets.Scripts.WorldMap
 
             return hex;
         }
-        private void HighlightOnClick()
+        private void OnMouseClick()
         {
             HexData newData;
 
@@ -367,35 +378,49 @@ namespace Assets.Scripts.WorldMap
                     return;
                 }
 
-                newData.Remove();
+                UnHighlightHex(newData);
             }
         }
+
+        HexData previousBorder = new HexData();
         private void HighlightOnHover()
         {
             HexData newData = GetHexDataAtMousePosition();
 
-            if (newData.IsNullOrEmpty())
+            if (newData.IsNullOrEmpty() || newData == previousBorder)
             {
                 return;
             }
 
             //Debug.Log("Hex at: " + newData.hex.GridCoordinates);
 
-            HighlightHex(newData);
+            if (!ActivatedBorderHexes.ContainsKey(newData.Hash))
+            {
+                ActivatedBorderHexes.Remove(previousBorder.Hash);
+                
+                if (!previousBorder.IsNullOrEmpty())
+                {
+                    previousBorder.DeactivateBorder();
+                }
+               
+                ActivatedBorderHexes.Add(newData.Hash, newData);
+                newData.ActivateBorder();
+                previousBorder = newData;
+            }
         }
 
         public void HighlightHex(HexData hex)
         {
             if (hex.IsNullOrEmpty())
-            {
-                return;
+                {
+                    return;
             }
 
             if (!HighlightedHexes.ContainsKey(hex.Hash))
             {
                 HighlightedHexes.Add(hex.Hash, hex);
                // hex.Highlight();
-                hex.ActivateBorder();
+                hex.Highlight();
             }
         }
 
@@ -408,9 +433,9 @@ namespace Assets.Scripts.WorldMap
 
             if (HighlightedHexes.ContainsKey(hex.Hash))
             {
-                //HighlightedHexes.Remove(hex.Hash);
+                HighlightedHexes.Remove(hex.Hash);
                // hex.UnHighlight();
-                hex.DeactivateBorder();
+                hex.UnHighlight();
             }
         }
 
@@ -488,6 +513,7 @@ namespace Assets.Scripts.WorldMap
                 if (!IsNullOrEmpty())
                 {
                     chunk.DeactivateHexBorder(hex);
+                    ResetData();
                 }
             }
             public void Remove()

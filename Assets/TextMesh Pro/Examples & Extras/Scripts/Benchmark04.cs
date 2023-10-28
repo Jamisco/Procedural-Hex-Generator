@@ -72,7 +72,7 @@ namespace TMPro.Examples
                     textMesh.anchor = TextAnchor.MiddleLeft;
                     textMesh.fontSize = i * 10;
 
-                    textMesh.color = new Color32(255, 255, 255, 255);
+                    textMesh.BiomeColor = new Color32(255, 255, 255, 255);
                     textMesh.text = i + " pts - Lorem ipsum dolor sit...";
 
                     lineHeight += i;

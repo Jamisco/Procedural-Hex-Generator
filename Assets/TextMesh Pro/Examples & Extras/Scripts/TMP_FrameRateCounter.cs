@@ -90,7 +90,7 @@ namespace TMPro.Examples
                 else
                     htmlColorTag = "<color=green>";
 
-                //string format = System.String.Format(htmlColorTag + "{0:F2} </color>FPS \n{1:F2} <#8080ff>MS",fps, ms);
+                //string format = System.String.Format(htmlColorTag + "{0:F2} </BiomeColor>FPS \n{1:F2} <#8080ff>MS",fps, ms);
                 //m_TextMeshPro.text = format;
 
                 m_TextMeshPro.SetText(htmlColorTag + fpsLabel, fps, ms);

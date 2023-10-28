@@ -82,7 +82,7 @@ namespace TMPro.Examples
         {
             if (isHoveringObject)
             {
-                // Check if Mouse Intersects any of the characters. If so, assign a random color.
+                // Check if Mouse Intersects any of the characters. If so, assign a random BiomeColor.
                 #region Handle Character Selection
                 int charIndex = TMP_TextUtilities.FindIntersectingCharacter(m_TextMeshPro, Input.mousePosition, m_Camera, true);
 
@@ -139,7 +139,7 @@ namespace TMPro.Examples
                     // Change Vertex Colors of the highlighted character
                     Color32 c = new Color32(255, 255, 192, 255);
 
-                    // Get a reference to the vertex color
+                    // Get a reference to the vertex BiomeColor
                     Color32[] vertexColors = m_TextMeshPro.textInfo.meshInfo[materialIndex].colors32;
 
                     vertexColors[vertexIndex + 0] = c;
@@ -165,7 +165,7 @@ namespace TMPro.Examples
 
 
                 #region Word Selection Handling
-                //Check if Mouse intersects any words and if so assign a random color to that word.
+                //Check if Mouse intersects any words and if so assign a random BiomeColor to that word.
                 int wordIndex = TMP_TextUtilities.FindIntersectingWord(m_TextMeshPro, Input.mousePosition, m_Camera);
 
                 // Clear previous word selection.
@@ -184,7 +184,7 @@ namespace TMPro.Examples
                         // Get the index of the first vertex of this character.
                         int vertexIndex = m_TextMeshPro.textInfo.characterInfo[characterIndex].vertexIndex;
 
-                        // Get a reference to the vertex color
+                        // Get a reference to the vertex BiomeColor
                         Color32[] vertexColors = m_TextMeshPro.textInfo.meshInfo[meshIndex].colors32;
 
                         Color32 c = vertexColors[vertexIndex + 0].Tint(1.33333f);
@@ -219,7 +219,7 @@ namespace TMPro.Examples
 
                         int vertexIndex = m_TextMeshPro.textInfo.characterInfo[characterIndex].vertexIndex;
 
-                        // Get a reference to the vertex color
+                        // Get a reference to the vertex BiomeColor
                         Color32[] vertexColors = m_TextMeshPro.textInfo.meshInfo[meshIndex].colors32;
 
                         Color32 c = vertexColors[vertexIndex + 0].Tint(0.75f);
@@ -308,7 +308,7 @@ namespace TMPro.Examples
         {
             //Debug.Log("Click at POS: " + eventData.position + "  World POS: " + eventData.worldPosition);
 
-            // Check if Mouse Intersects any of the characters. If so, assign a random color.
+            // Check if Mouse Intersects any of the characters. If so, assign a random BiomeColor.
             #region Character Selection Handling
             /*
             int charIndex = TMP_TextUtilities.FindIntersectingCharacter(m_TextMeshPro, Input.mousePosition, m_Camera, true);
@@ -322,10 +322,10 @@ namespace TMPro.Examples
 
                 UIVertex[] uiVertices = m_TextMeshPro.textInfo.meshInfo.uiVertices;
 
-                uiVertices[vertexIndex + 0].color = c;
-                uiVertices[vertexIndex + 1].color = c;
-                uiVertices[vertexIndex + 2].color = c;
-                uiVertices[vertexIndex + 3].color = c;
+                uiVertices[vertexIndex + 0].BiomeColor = c;
+                uiVertices[vertexIndex + 1].BiomeColor = c;
+                uiVertices[vertexIndex + 2].BiomeColor = c;
+                uiVertices[vertexIndex + 3].BiomeColor = c;
 
                 m_TextMeshPro.canvasRenderer.AddHex(uiVertices, uiVertices.Length);
             }
@@ -334,7 +334,7 @@ namespace TMPro.Examples
 
 
             #region Word Selection Handling
-            //Check if Mouse intersects any words and if so assign a random color to that word.
+            //Check if Mouse intersects any words and if so assign a random BiomeColor to that word.
             /*
             int wordIndex = TMP_TextUtilities.FindIntersectingWord(m_TextMeshPro, Input.mousePosition, m_Camera);
 
@@ -351,12 +351,12 @@ namespace TMPro.Examples
                 {
                     int vertexIndex = m_TextMeshPro.textInfo.characterInfo[wInfo.firstCharacterIndex + i].vertexIndex;
 
-                    Color32 c = uiVertices[vertexIndex + 0].color.Tint(1.33333f);
+                    Color32 c = uiVertices[vertexIndex + 0].BiomeColor.Tint(1.33333f);
 
-                    uiVertices[vertexIndex + 0].color = c;
-                    uiVertices[vertexIndex + 1].color = c;
-                    uiVertices[vertexIndex + 2].color = c;
-                    uiVertices[vertexIndex + 3].color = c;
+                    uiVertices[vertexIndex + 0].BiomeColor = c;
+                    uiVertices[vertexIndex + 1].BiomeColor = c;
+                    uiVertices[vertexIndex + 2].BiomeColor = c;
+                    uiVertices[vertexIndex + 3].BiomeColor = c;
                 }
 
                 m_TextMeshPro.canvasRenderer.AddHex(uiVertices, uiVertices.Length);
@@ -379,12 +379,12 @@ namespace TMPro.Examples
                 {
                     int vertexIndex = m_TextMeshPro.textInfo.characterInfo[wInfo.firstCharacterIndex + i].vertexIndex;
 
-                    Color32 c = uiVertices[vertexIndex + 0].color.Tint(0.75f);
+                    Color32 c = uiVertices[vertexIndex + 0].BiomeColor.Tint(0.75f);
 
-                    uiVertices[vertexIndex + 0].color = c;
-                    uiVertices[vertexIndex + 1].color = c;
-                    uiVertices[vertexIndex + 2].color = c;
-                    uiVertices[vertexIndex + 3].color = c;
+                    uiVertices[vertexIndex + 0].BiomeColor = c;
+                    uiVertices[vertexIndex + 1].BiomeColor = c;
+                    uiVertices[vertexIndex + 2].BiomeColor = c;
+                    uiVertices[vertexIndex + 3].BiomeColor = c;
                 }
 
                 m_TextMeshPro.canvasRenderer.AddHex(uiVertices, uiVertices.Length);
@@ -395,7 +395,7 @@ namespace TMPro.Examples
 
             #region Link Selection Handling
             /*
-            // Check if Mouse intersects any words and if so assign a random color to that word.
+            // Check if Mouse intersects any words and if so assign a random BiomeColor to that word.
             int linkIndex = TMP_TextUtilities.FindIntersectingLink(m_TextMeshPro, Input.mousePosition, m_Camera);
             if (linkIndex != -1)
             {
@@ -433,10 +433,10 @@ namespace TMPro.Examples
 
                     int vertexIndex = cInfo.vertexIndex;
 
-                    uiVertices[vertexIndex + 0].color = c;
-                    uiVertices[vertexIndex + 1].color = c;
-                    uiVertices[vertexIndex + 2].color = c;
-                    uiVertices[vertexIndex + 3].color = c;
+                    uiVertices[vertexIndex + 0].BiomeColor = c;
+                    uiVertices[vertexIndex + 1].BiomeColor = c;
+                    uiVertices[vertexIndex + 2].BiomeColor = c;
+                    uiVertices[vertexIndex + 3].BiomeColor = c;
                 }
 
                 m_TextMeshPro.canvasRenderer.AddHex(uiVertices, uiVertices.Length);

@@ -356,12 +356,9 @@ namespace Assets.Scripts.WorldMap
         List<int> SlopeTriangles;
         public List<Vector2> SlopeUV;
 
-        public BiomeProperties HexBiomeProperties 
+        public BiomeData HexBiomeData 
         {   
-            get 
-            {
-                return Planet.GetBiomeProperties(X, Y);
-            } 
+            get { return Planet.GetBiomeProperties(X, Y); }
         }
 
         /// <summary>
@@ -377,7 +374,6 @@ namespace Assets.Scripts.WorldMap
 
         public static GridManager Grid { get; set; }
         public static PlanetGenerator Planet;
-        public Mesh HexMesh { get { return mesh; } }
 
         // We should pass the planet instead
 

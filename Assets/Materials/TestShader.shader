@@ -108,8 +108,7 @@
             }
 
             fixed4 frag(v2f i) : SV_Target 
-            {          
-            
+            {                 
                 if(_UseColor == 1)
 				{
 					return i.color * _Color;

@@ -27,9 +27,9 @@ Shader "Custom/InstanceShader"
                 UNITY_VERTEX_INPUT_INSTANCE_ID // use this to access instanced properties in the fragment shader.
             };
 
-            int i = 0;
             v2f vert(appdata v)
             {
+                int i = 0;
                 UNITY_SETUP_INSTANCE_ID(v);
                 v2f o;
 
