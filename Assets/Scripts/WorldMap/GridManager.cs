@@ -419,8 +419,10 @@ namespace Assets.Scripts.WorldMap
             if (!HighlightedHexes.ContainsKey(hex.Hash))
             {
                 HighlightedHexes.Add(hex.Hash, hex);
-               // hex.Highlight();
-                hex.Highlight();
+                // hex.Highlight();
+
+
+                hex.ChangeColor(Color.black);
             }
         }
 
@@ -434,8 +436,12 @@ namespace Assets.Scripts.WorldMap
             if (HighlightedHexes.ContainsKey(hex.Hash))
             {
                 HighlightedHexes.Remove(hex.Hash);
-               // hex.UnHighlight();
-                hex.UnHighlight();
+                // hex.UnHighlight();
+                //hex.UnHighlight();
+
+                Color ogColor = hex.hex.HexBiomeData.BiomeColor;
+
+                hex.ChangeColor(ogColor);
             }
         }
 
@@ -524,6 +530,14 @@ namespace Assets.Scripts.WorldMap
                     ResetData();
                 }
             }
+
+            public void ChangeColor(Color color)
+            {
+                if ((!IsNullOrEmpty()))
+                {
+                    chunk.ChangeColor(hex, color);
+                }
+            } 
 
             public void ResetData()
             {

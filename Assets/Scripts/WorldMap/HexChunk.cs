@@ -314,18 +314,62 @@ namespace Assets.Scripts.WorldMap
             DrawMesh();
         }
 
+        Dictionary<HexTile, Color> changedColor = new Dictionary<HexTile, Color>();
+
         public void ChangeColor(HexTile hex, Color newColor)
         {
             // It must be understood that you can either display materials or colors for the fusions.
             // if you use materials, changing BiomeColor wont have any visual effects
             // if you use colors, use must then remove the hex from the fused mesh it belongs to and then add it to a fused mesh of thesame BiomeColor or create a new fused mesh for the new BiomeColor
 
-            if (hex.HexBiomeData.BiomeColor == newColor)
+            if(BiomeVisual == BiomeVisualOption.Color)
             {
-                // there are thesame BiomeColor
-                return;
+                BiomeProperties props;
+
+                // the reasons we do this is because we might have already changed the color of a hex and thus we need that displayed color once more to access the fused mesh
+                if (changedColor.TryGetValue(hex, out Color aColor))
+                {
+                    props = new BiomeProperties(aColor);
+                    changedColor.Remove(hex);
+                }
+                else
+                {
+                    props = hex.HexBiomeData.GetBiomeProperties(BiomeVisual);
+                }
+                
+
+                // first we remove it from the fused mesh it belongs too,
+                biomeFusedMeshes[props].RemoveMesh(hex.GetHashCode());
+
+                if (biomeFusedMeshes[props].VertexCount == 0)
+                {
+                    biomeFusedMeshes.Remove(props);
+                }
+
+                // then we change the BiomeColor of the hex itself
+                BiomeProperties newProps = new BiomeProperties(newColor);
+
+                FusedMesh fused = null;
+
+                biomeFusedMeshes.TryGetValue(newProps, out fused);
+
+                if (fused == null)
+                {
+                    fused = new FusedMesh();
+                    fused.AddMesh(hex.DrawMesh(), hex.GetHashCode(), hex.Position);
+
+                    biomeFusedMeshes.Add(newProps, fused);
+                }
+                else
+                {
+                    biomeFusedMeshes[newProps].AddMesh(hex.DrawMesh(), hex.GetHashCode(), hex.Position);
+                }
+
+                changedColor.Add(hex, newColor);
+
+                DrawMesh();
             }
-            
+
             //BiomeProperties props = hex.HexBiomeData.GetBiomeProperties;
 
             //// first we remove it from the fused mesh it belongs too,
