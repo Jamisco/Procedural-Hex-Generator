@@ -3,7 +3,9 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
@@ -346,19 +348,29 @@ namespace Assets.Scripts.WorldMap
         public Vector2Int GridCoordinates;
         public Vector3 Position { get; set; }
 
-        Mesh mesh;
+        public List<Vector3> Vertices = new List<Vector3>(6);
+        public List<int> Triangles = new List<int>(12);
 
-        public List<Vector3> Vertices;
-        public List<int> Triangles;
+        List<Vector3> SlopeVertices = new List<Vector3>(4);
+        List<int> SlopeTriangles = new List<int>(6);
+
+        public List<Vector2> SlopeUV = new List<Vector2>(28);
+
+        Mesh mesh;
+        
         public Vector2[] BaseUV;
 
-        List<Vector3> SlopeVertices;
-        List<int> SlopeTriangles;
-        public List<Vector2> SlopeUV;
-
+        private BiomeData _hexBiomeData;
         public BiomeData HexBiomeData 
         {   
+            get { return _hexBiomeData; }
+            set { _hexBiomeData = value; }
+        }
+
+        public BiomeData DefaultBiomeData
+        {
             get { return Planet.GetBiomeProperties(X, Y); }
+            
         }
 
         /// <summary>
@@ -378,17 +390,8 @@ namespace Assets.Scripts.WorldMap
         // We should pass the planet instead
 
         static Random random = new Random();
-
         public HexTile(int x, int z)
         {
-            Vertices = new List<Vector3>(6);
-            Triangles = new List<int>(12);
-
-            SlopeVertices = new List<Vector3>(4);
-            SlopeTriangles = new List<int>(6);
-
-            SlopeUV = new List<Vector2>(28);
-
             AxialCoordinates = Axial.ToAxial(x, z);
             GridCoordinates = new Vector2Int(x, z);
 
@@ -402,6 +405,15 @@ namespace Assets.Scripts.WorldMap
             //IniaiteDrawProtocol();
 
             SetBounds();
+
+            try
+            {
+                _hexBiomeData = DefaultBiomeData;
+            }
+            catch (Exception)
+            {
+                // this exception is here just in case the planet arrays have not been computed yet
+            }
         }
 
         public static void CreateSlopes(Dictionary<Axial, HexTile> hexes)
@@ -417,8 +429,69 @@ namespace Assets.Scripts.WorldMap
         {
             Dictionary<Axial, HexTile> hexTiles = new Dictionary<Axial, HexTile>(MapSize.x * MapSize.y + 10);
 
-            Parallel.ForEach(hexChunks, chunk =>
+
+            #region Parrallel forEach
+            //Parallel.ForEach(hexChunks, chunk =>
+            //{
+            //    int chunkBoundsXMin = chunk.ChunkBounds.xMin;
+            //    int chunkBoundsXMax = chunk.ChunkBounds.xMax;
+            //    int chunkBoundsYMin = chunk.ChunkBounds.yMin;
+            //    int chunkBoundsYMax = chunk.ChunkBounds.yMax;
+
+            //    for (int x = chunkBoundsXMin; x < chunkBoundsXMax; x++)
+            //    {
+            //        for (int z = chunkBoundsYMin; z < chunkBoundsYMax; z++)
+            //        {
+            //            HexTile hc = new HexTile(x, z);
+
+            //            hexTiles[hc.AxialCoordinates] = hc;
+
+            //            chunk.AddHex(hc);
+            //        }
+            //    }
+            //});
+
+            #endregion
+
+            #region Parrellel For
+
+            //List<HexChunk> chunky = hexChunks;
+
+            //Parallel.For(0, hexChunks.Count, chunkIndex =>
+            //{
+            //    HexChunk chunk = chunky[chunkIndex];
+            //    int chunkBoundsXMin = chunk.ChunkBounds.xMin;
+            //    int chunkBoundsXMax = chunk.ChunkBounds.xMax;
+            //    int chunkBoundsYMin = chunk.ChunkBounds.yMin;
+            //    int chunkBoundsYMax = chunk.ChunkBounds.yMax;
+
+            //    for (int x = chunkBoundsXMin; x < chunkBoundsXMax; x++)
+            //    {
+            //        for (int z = chunkBoundsYMin; z < chunkBoundsYMax; z++)
+            //        {
+            //            HexTile hc = new HexTile(x, z);
+
+            //            lock (hexTiles) // Ensure safe access to the dictionary
+            //            {
+            //                hexTiles[hc.AxialCoordinates] = hc;
+            //            }
+
+            //            chunk.AddHex(hc);
+            //        }
+            //    }
+            //});
+
+            #endregion
+
+
+            // It seems using a standard loop is about 30% - 50% faster than using parrallel.
+            // For a 1000 x 1000 grid
+            // For loop: 7 seconds
+            // Parrellel foreach/for 15 - 16 seconds
+
+            for (int chunkIndex = 0; chunkIndex < hexChunks.Count; chunkIndex++)
             {
+                HexChunk chunk = hexChunks[chunkIndex];
                 int chunkBoundsXMin = chunk.ChunkBounds.xMin;
                 int chunkBoundsXMax = chunk.ChunkBounds.xMax;
                 int chunkBoundsYMin = chunk.ChunkBounds.yMin;
@@ -435,7 +508,7 @@ namespace Assets.Scripts.WorldMap
                         chunk.AddHex(hc);
                     }
                 }
-            });
+            }
 
             return hexTiles;
         }
@@ -716,6 +789,11 @@ namespace Assets.Scripts.WorldMap
             }
 
             return inside;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(GridCoordinates, AxialCoordinates, Position, mesh);
         }
     }
 }

@@ -1904,7 +1904,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   MainPlanet:
-    PlanetSize: {x: 100, y: 100}
+    PlanetSize: {x: 500, y: 500}
     InitialSunRayFocus: {x: 10, y: 10}
     SunlightVector: {x: 0, y: 0}
     SunlightIntensity: 1

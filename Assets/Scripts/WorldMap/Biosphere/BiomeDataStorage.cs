@@ -17,7 +17,7 @@ namespace Assets.Scripts.WorldMap.Biosphere
     {
         [SerializeField] List<BiomeData> biomeData = new List<BiomeData>();
 
-        private static readonly string SavePath = "Assets/Settings/BiomeDataStorage.asset";
+        private static readonly string SavePath = "Assets/Materials/BiomeDataStorage.asset";
 
         public Dictionary<Biomes, BiomeData> GetData()
         {

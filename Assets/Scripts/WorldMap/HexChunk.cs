@@ -11,6 +11,8 @@ using static Assets.Scripts.WorldMap.HexTile;
 using static Assets.Scripts.Miscellaneous.ExtensionMethods;
 using static Unity.Collections.AllocatorManager;
 using static Assets.Scripts.WorldMap.Biosphere.SurfaceBody.BiomeData;
+using static Assets.Scripts.WorldMap.FusedMesh;
+using System.Threading;
 
 namespace Assets.Scripts.WorldMap
 {
@@ -34,11 +36,9 @@ namespace Assets.Scripts.WorldMap
 
         public ConcurrentDictionary<Vector2Int, HexTile> hexDictionary = new ConcurrentDictionary<Vector2Int, HexTile>();
 
-        public Dictionary<BiomeProperties, List<HexTile>> biomeTiles = new Dictionary<BiomeProperties, List<HexTile>>();
+        public Dictionary<BiomeVisualData, List<HexTile>> biomeTiles = new Dictionary<BiomeVisualData, List<HexTile>>();
 
-        public ConcurrentDictionary<BiomeProperties, ConcurrentBag<HexTile>> bt = new ConcurrentDictionary<BiomeProperties, ConcurrentBag<HexTile>>();
-
-        public Dictionary<BiomeProperties, FusedMesh> biomeFusedMeshes = new Dictionary<BiomeProperties, FusedMesh>();
+        public Dictionary<BiomeVisualData, FusedMesh> biomeFusedMeshes = new Dictionary<BiomeVisualData, FusedMesh>();
 
         private List<Material> materials = new List<Material>();
         private List<MaterialPropertyBlock> blocks = new List<MaterialPropertyBlock>();
@@ -125,25 +125,43 @@ namespace Assets.Scripts.WorldMap
         {
             // the reason we use a concurrent bag is because it is thread safe
             // thus you can add to it from multiple from threads
-
             hexDictionary.TryAdd(hex.GridCoordinates, hex);
             
-            BiomeProperties props;
+            //BiomeVisualData props;
 
-            props = hex.HexBiomeData.GetBiomeProperties(BiomeVisual);
+            //props = hex.HexBiomeData.GetBiomeProperties(BiomeVisual);
 
-            if (bt.ContainsKey(props))
-            {
-                bt[props].Add(hex);
-            }
-            else
-            {
-                bt.TryAdd(props, new ConcurrentBag<HexTile>() { hex });
-            }
+            //if (bt.ContainsKey(props))
+            //{
+            //    bt[props].Add(hex);
+            //}
+            //else
+            //{
+            //    bt.TryAdd(props, new ConcurrentBag<HexTile>() { hex });
+            //}
         }
         private void SplitDictionary()
         {
-            biomeTiles = bt.ToDictionary(x => x.Key, x => x.Value.ToList());
+            hexes = hexDictionary.Values.ToList();
+            biomeTiles.Clear();
+            
+            foreach (HexTile hex in hexes)
+            {
+                BiomeVisualData props;
+
+                props = hex.HexBiomeData.GetBiomeProperties(BiomeVisual);
+
+                if (biomeTiles.ContainsKey(props))
+                {
+                    biomeTiles[props].Add(hex);
+                }
+                else
+                {
+                    biomeTiles.TryAdd(props, new List<HexTile>() { hex });
+                }
+            }
+
+            //biomeTiles = bt.ToDictionary(x => x.Key, x => x.Value.ToList());
         }
 
         public void IniaiteDrawProtocol()
@@ -177,22 +195,27 @@ namespace Assets.Scripts.WorldMap
 
         private void FuseMeshes()
         {
-            List<Mesh> meshes = new List<Mesh>();
+            List<MeshData> meshes = new List<MeshData>();
             List<int> hashes = new List<int>();
             List<Vector3> offsets = new List<Vector3>();
-
+            
+            // Essentially, this tells us this
+            // for each index, when inserting triangles at a specific index, you must offset the vertex count by the givin variable
+            // and you must offset the insert position using the triStartIndex
+            List<(int vertCount, int triStartIndex)> vertTriIndex = new List<(int, int)>();
+            (int totalVerts, int totalTri) totals = (0, 0);
             // the below loop accounts for 90% of the time taken for this method 
             // this entire method alone accounts for 60% of the time taken to draw the entire map
 
             // drawing the hexes individuall is horrendouesly ineffective
             // a 100 x 100 map with 100 hexes per chunk averages 5 - 10 fps
-            
-            foreach (KeyValuePair<BiomeProperties, List<HexTile>> biomes in biomeTiles)
+
+            foreach (KeyValuePair<BiomeVisualData, List<HexTile>> biomes in biomeTiles)
             {
                 ExtractData(biomes.Value);
 
                 biomeFusedMeshes.Add(biomes.Key,
-                    new FusedMesh(meshes, hashes, offsets));
+                    new FusedMesh(meshes, hashes, offsets, vertTriIndex, totals));
             }
 
             DrawMesh();
@@ -202,13 +225,25 @@ namespace Assets.Scripts.WorldMap
                 meshes.Clear();
                 hashes.Clear();
                 offsets.Clear();
+                vertTriIndex.Clear();
+
+                int vert = 0;
+                int tri = 0;
 
                 foreach (HexTile hex in hexes)
                 {
-                    meshes.Add(hex.DrawMesh());
+                    meshes.Add(new MeshData(hex.DrawMesh()));
                     hashes.Add(hex.GetHashCode());
                     offsets.Add(hex.Position);
+                      
+                    vertTriIndex.Add((vert, tri));
+                    
+                    vert += hex.DrawMesh().vertexCount;
+                    tri += hex.DrawMesh().triangles.Count();
+                    
                 }
+
+                totals = (vert, tri);
             }
         }
 
@@ -294,7 +329,7 @@ namespace Assets.Scripts.WorldMap
         {
             hexDictionary.TryRemove(hex.GridCoordinates, out HexTile hexTile);
 
-            BiomeProperties props = hex.HexBiomeData.GetBiomeProperties(BiomeVisual);
+            BiomeVisualData props = hex.HexBiomeData.GetBiomeProperties(BiomeVisual);
 
             biomeTiles.Remove(props);
         }
@@ -303,7 +338,7 @@ namespace Assets.Scripts.WorldMap
         {
             RemoveHexFromLists(hex);
 
-            BiomeProperties props = hex.HexBiomeData.GetBiomeProperties(BiomeVisual);
+            BiomeVisualData props = hex.HexBiomeData.GetBiomeProperties(BiomeVisual);
 
             biomeFusedMeshes[props].RemoveMesh(hex.GetHashCode());
 
@@ -324,19 +359,9 @@ namespace Assets.Scripts.WorldMap
 
             if(BiomeVisual == BiomeVisualOption.Color)
             {
-                BiomeProperties props;
+                BiomeVisualData props;
 
-                // the reasons we do this is because we might have already changed the color of a hex and thus we need that displayed color once more to access the fused mesh
-                if (changedColor.TryGetValue(hex, out Color aColor))
-                {
-                    props = new BiomeProperties(aColor);
-                    changedColor.Remove(hex);
-                }
-                else
-                {
-                    props = hex.HexBiomeData.GetBiomeProperties(BiomeVisual);
-                }
-                
+                props = hex.HexBiomeData.GetBiomeProperties(BiomeVisual);
 
                 // first we remove it from the fused mesh it belongs too,
                 biomeFusedMeshes[props].RemoveMesh(hex.GetHashCode());
@@ -345,41 +370,44 @@ namespace Assets.Scripts.WorldMap
                 {
                     biomeFusedMeshes.Remove(props);
                 }
+                
+                BiomeData data = hex.HexBiomeData;
+                data.SetBiomeColor(newColor);
+                hex.HexBiomeData = data;
 
-                // then we change the BiomeColor of the hex itself
-                BiomeProperties newProps = new BiomeProperties(newColor);
+                props = hex.HexBiomeData.GetBiomeProperties(BiomeVisual);
 
                 FusedMesh fused = null;
 
-                biomeFusedMeshes.TryGetValue(newProps, out fused);
+                biomeFusedMeshes.TryGetValue(props, out fused);
 
                 if (fused == null)
                 {
                     fused = new FusedMesh();
                     fused.AddMesh(hex.DrawMesh(), hex.GetHashCode(), hex.Position);
 
-                    biomeFusedMeshes.Add(newProps, fused);
+                    biomeFusedMeshes.Add(props, fused);
                 }
                 else
                 {
-                    biomeFusedMeshes[newProps].AddMesh(hex.DrawMesh(), hex.GetHashCode(), hex.Position);
+                    biomeFusedMeshes[props].AddMesh(hex.DrawMesh(), hex.GetHashCode(), hex.Position);
                 }
 
-                changedColor.Add(hex, newColor);
+               // changedColor.Add(hex, newColor);
 
                 DrawMesh();
             }
 
-            //BiomeProperties props = hex.HexBiomeData.GetBiomeProperties;
+            //BiomeVisualData props = hex.HexBiomeData.GetBiomeProperties;
 
             //// first we remove it from the fused mesh it belongs too,
             //biomeFusedMeshes[props].RemoveMesh(hex.GetHashCode());
 
             //// then we change the BiomeColor of the hex itself
-            //hex.HexBiomeData = new BiomeProperties(newColor);
+            //hex.HexBiomeData = new BiomeVisualData(newColor);
 
             //// now see if there is fused mesh with said BiomeColor
-            //KeyValuePair<BiomeProperties, FusedMesh> fused 
+            //KeyValuePair<BiomeVisualData, FusedMesh> fused 
             //    = biomeFusedMeshes.FirstOrDefault(x => x.Key.BiomeColor == newColor);
 
             //// we would have to change how the hash is calculated,
@@ -413,7 +441,6 @@ namespace Assets.Scripts.WorldMap
                 HighlightMeshFilter.mesh = HighlightedHexes.Mesh;
             }
         }
-
         public void ActivateHexBorder(HexTile hex)
         {
             int[] sides = { 0, 1, 2, 3, 4, 5 };
@@ -423,7 +450,6 @@ namespace Assets.Scripts.WorldMap
 
             BorderMeshFilter.mesh = ActiveHexBorders.Mesh;
         }
-
         public void DeactivateHexBorder(HexTile hex)
         {
             bool removed = ActiveHexBorders.RemoveMesh(hex.GetHashCode());
@@ -433,7 +459,6 @@ namespace Assets.Scripts.WorldMap
                 BorderMeshFilter.mesh = ActiveHexBorders.Mesh;
             }
         }
-
         private void SetMaterialProperties()
         {
             blocks.Clear();

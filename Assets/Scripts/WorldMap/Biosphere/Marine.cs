@@ -13,7 +13,7 @@ namespace Assets.Scripts.WorldMap.Biosphere
     {
         public override BiomeData GetBiomeData(GridValues grid)
         {
-            return GetBiomeData(Biomes.Polar);
+            return GetBiomeData(Biomes.Ocean);
         }
     }
 }

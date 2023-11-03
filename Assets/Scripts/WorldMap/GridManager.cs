@@ -439,7 +439,7 @@ namespace Assets.Scripts.WorldMap
                 // hex.UnHighlight();
                 //hex.UnHighlight();
 
-                Color ogColor = hex.hex.HexBiomeData.BiomeColor;
+                Color ogColor = hex.hex.DefaultBiomeData.BiomeColor;
 
                 hex.ChangeColor(ogColor);
             }

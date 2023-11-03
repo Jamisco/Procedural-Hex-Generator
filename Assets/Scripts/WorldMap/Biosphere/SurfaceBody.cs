@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using static Assets.Scripts.WorldMap.Planet;
 using UnityEngine;
 using static Assets.Scripts.WorldMap.PlanetGenerator;
+using Unity.VisualScripting;
 
 namespace Assets.Scripts.WorldMap.Biosphere
 {
@@ -35,20 +36,21 @@ namespace Assets.Scripts.WorldMap.Biosphere
             }
             
         }
-        public struct BiomeProperties : IEquatable<BiomeProperties>
+        public struct BiomeVisualData : IEquatable<BiomeVisualData>
         {
             public int BiomeHash { get; private set; }
 
             // you can either display the BiomeColor or the texture
-            public Color BiomeColor { get; private set; }
-            public Texture2D SeasonTexture { get; private set; }
-            public Texture2D WeatherTexture { get; private set; }
+            public Color BiomeColor { get; set; }
+            public Texture2D SeasonTexture { get; set; }
+            public Texture2D WeatherTexture { get; set; }
 
-            public float WeatherLerp { get; private set; } 
+            public float WeatherLerp { get; set; } 
             public bool UseColor { get; private set; }
 
             // These constructores are set up in such a way that it forces the use to use either a BiomeColor or a texture
-            public BiomeProperties(Color color)
+            // Of course there is also the option of adding both a texture and a color
+            public BiomeVisualData(Color color)
             {
                 BiomeHash = 0;
                 
@@ -62,7 +64,7 @@ namespace Assets.Scripts.WorldMap.Biosphere
 
                 SetHashCode();
             }
-            public BiomeProperties(Texture2D seasonTexture)
+            public BiomeVisualData(Texture2D seasonTexture)
             {
                 BiomeHash = 0;
 
@@ -76,8 +78,7 @@ namespace Assets.Scripts.WorldMap.Biosphere
 
                 SetHashCode();
             }
-
-            public BiomeProperties(Texture2D seasonTexture, Texture2D weatherTexture, float lerp)
+            public BiomeVisualData(Texture2D seasonTexture, Texture2D weatherTexture, float lerp)
             {
                 BiomeHash = 0;
 
@@ -91,10 +92,35 @@ namespace Assets.Scripts.WorldMap.Biosphere
 
                 SetHashCode();
             }
+            public BiomeVisualData(Color color, Texture2D seasonTexture, Texture2D weatherTexture, float lerp, bool useColor)
+            {
+                BiomeHash = 0;
+
+                BiomeColor = color;
+                UseColor = useColor;
+
+                SeasonTexture = seasonTexture;
+                WeatherTexture = weatherTexture;
+
+                WeatherLerp = lerp;
+
+                SetHashCode();
+            }
+
+            /// <summary>
+            /// This is used to set the UseColor variable. If true the hash will be changed to use the color, if false the hash will be changed to use the texture
+            /// </summary>
+            /// <param name="useColor"></param>
+            public void SetUseColor(bool useColor)
+            {
+                UseColor = useColor;
+
+                SetHashCode();
+            }
 
             // this is primarily used to make check if two objects can be rendered together
             // because objects withsame textures and colors will have thesame hashcode
-            public bool Equals(BiomeProperties other)
+            public bool Equals(BiomeVisualData other)
             {
                 if(other.BiomeHash == BiomeHash)
                 {
@@ -102,7 +128,7 @@ namespace Assets.Scripts.WorldMap.Biosphere
                 }
 
                 return false;
-            }
+            }         
             private void SetHashCode()
             {
                 int hash = 0;
@@ -182,24 +208,44 @@ namespace Assets.Scripts.WorldMap.Biosphere
                 _weatherTexture = weatherTexture;
             }
 
-            public BiomeProperties GetBiomeProperties(BiomeVisualOption options, float lerp = 0)
+            public void SetBiomeColor(Color color)
             {
-                BiomeProperties props;
+                _biomeColor = color;
+            }
+
+            public void SetSeasonTexture(Texture2D texture)
+            {
+                _seasonTexture = texture;
+            }
+
+            public void SetWeatherTexture(Texture2D texture)
+            {
+                _weatherTexture = texture;
+            }
+
+            public void SetBiome(Biomes biome)
+            {
+                _biome = biome;
+            }
+
+            public BiomeVisualData GetBiomeProperties(BiomeVisualOption options, float lerp = 0)
+            {
+                BiomeVisualData props;
 
                 switch (options)
                 {
                     case BiomeVisualOption.Color:
-                        props = new BiomeProperties(BiomeColor);
+                        props = new BiomeVisualData(BiomeColor);
                         break;
                     case BiomeVisualOption.Season:
-                        props = new BiomeProperties(SeasonTexture);
+                        props = new BiomeVisualData(SeasonTexture);
                         break;
                     case BiomeVisualOption.SeasonWeather:
-                        props = new BiomeProperties(SeasonTexture, WeatherTexture, lerp);
+                        props = new BiomeVisualData(SeasonTexture, WeatherTexture, lerp);
                         break;
                     default:
                         // by default we use the color only
-                        props = new BiomeProperties(BiomeColor);
+                        props = new BiomeVisualData(BiomeColor);
                         break;
                 }
 
