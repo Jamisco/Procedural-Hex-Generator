@@ -192,7 +192,7 @@ namespace Assets.Scripts.WorldMap
         {
             for (int i = 0; i < hexChunks.Count; i++)
             {
-                hexChunks[i].IniaiteDrawProtocol();
+                hexChunks[i].InitiateDrawProtocol();
                 yield return new WaitForSeconds(time);
             }
         }

@@ -402,7 +402,7 @@ namespace Assets.Scripts.WorldMap
             CreateBaseMesh();
             //CreateOuterHexMesh();
 
-            //IniaiteDrawProtocol();
+            //InitiateDrawProtocol();
 
             SetBounds();
 

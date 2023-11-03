@@ -126,19 +126,6 @@ namespace Assets.Scripts.WorldMap
             // the reason we use a concurrent bag is because it is thread safe
             // thus you can add to it from multiple from threads
             hexDictionary.TryAdd(hex.GridCoordinates, hex);
-            
-            //BiomeVisualData props;
-
-            //props = hex.HexBiomeData.GetBiomeProperties(BiomeVisual);
-
-            //if (bt.ContainsKey(props))
-            //{
-            //    bt[props].Add(hex);
-            //}
-            //else
-            //{
-            //    bt.TryAdd(props, new ConcurrentBag<HexTile>() { hex });
-            //}
         }
         private void SplitDictionary()
         {
@@ -164,7 +151,7 @@ namespace Assets.Scripts.WorldMap
             //biomeTiles = bt.ToDictionary(x => x.Key, x => x.Value.ToList());
         }
 
-        public void IniaiteDrawProtocol()
+        public void InitiateDrawProtocol()
         {    
             SplitDictionary();
             FuseMeshes();
