@@ -1907,58 +1907,10 @@ MonoBehaviour:
     PlanetSize: {x: 500, y: 500}
     InitialSunRayFocus: {x: 10, y: 10}
     SunlightVector: {x: 0, y: 0}
-    SunMovementAmplitude: 0.167
-    SunMovementFrequency: 0.4
     SunlightIntensity: 1
     SunlightArea: 0
-    DaysInYear: 106
+    DaysInYear: 10
     currentDay: 0
-<<<<<<< HEAD
-=======
-    WeatherYPosition: 0.284
-    TerrestrialBody:
-      biomeData:
-      - biome: 0
-        color: {r: 0.46226418, g: 0.39030796, b: 0.39030796, a: 1}
-        texture: {fileID: 2800000, guid: 215e28c9c4a676747932d63132dd82bb, type: 3}
-      - biome: 1
-        color: {r: 0.51209164, g: 0.6037736, b: 0.21359916, a: 1}
-        texture: {fileID: 2800000, guid: 597c788c377099f4cac099e7616ca8f1, type: 3}
-      - biome: 2
-        color: {r: 0.028969381, g: 0.2924528, b: 0.088294275, a: 1}
-        texture: {fileID: 2800000, guid: 01a1610bf7ebdcf4990648a6f54c754f, type: 3}
-      - biome: 3
-        color: {r: 0.10453011, g: 0.764151, b: 0.14600521, a: 1}
-        texture: {fileID: 2800000, guid: 51babd26549616d45ab9e445869bac3c, type: 3}
-      - biome: 4
-        color: {r: 0.3679705, g: 0.38679248, b: 0.16602886, a: 1}
-        texture: {fileID: 2800000, guid: f55770fe15bae1a4c97e5803d36adadf, type: 3}
-      - biome: 5
-        color: {r: 0.35337222, g: 0.38679248, b: 0.11129405, a: 1}
-        texture: {fileID: 2800000, guid: cf3bbd0ebaef60049beb69c7d04e56dc, type: 3}
-      - biome: 6
-        color: {r: 0.39974576, g: 0.5660378, b: 0.18956926, a: 1}
-        texture: {fileID: 2800000, guid: 19969405a0e4e3b4b99d3909aeaf7c47, type: 3}
-      - biome: 7
-        color: {r: 0.5283019, g: 0.45626292, b: 0.3762905, a: 1}
-        texture: {fileID: 2800000, guid: 93239e41e3ccda94fb5d1bd1891ae91f, type: 3}
-      - biome: 8
-        color: {r: 0.3922373, g: 0.5943396, b: 0.2719384, a: 1}
-        texture: {fileID: 2800000, guid: df19ed2cd03e0a34fac28038a20554b9, type: 3}
-      - biome: 9
-        color: {r: 0.8113208, g: 0.79218584, b: 0.79218584, a: 1}
-        texture: {fileID: 2800000, guid: 34bc1c82251d51d47b35c7d1c56b6486, type: 3}
-      - biome: 10
-        color: {r: 0.8962264, g: 0.8810387, b: 0.83281416, a: 1}
-        texture: {fileID: 2800000, guid: c16a6df78bbdbf8489475eb6caa21e3a, type: 3}
-    MarineBody:
-      biomeData:
-      - biome: 0
-        color: {r: 0.27033645, g: 0.63245726, b: 0.7075472, a: 1}
-        texture: {fileID: 2800000, guid: aa701e5be2dbcd24aad4fb9c3ca284da, type: 3}
-    SunMovementVector: {x: 0, y: 0}
-    SunMovementPatterns: 0
->>>>>>> anthonytest
   CircularSun: 0
   VerticalSun: 0
   planetFractal: 1
