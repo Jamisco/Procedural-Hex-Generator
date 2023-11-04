@@ -184,6 +184,8 @@ namespace Assets.Scripts.WorldMap.Biosphere
             [SerializeField] private Color _biomeColor;
             [SerializeField] private Texture2D _seasonTexture;
             [SerializeField] private Texture2D _weatherTexture;
+            private Color color;
+            private Texture2D texture;
 
             public Biomes Biome { get => _biome;}
             public Color BiomeColor { get => _biomeColor;  }
@@ -198,6 +200,9 @@ namespace Assets.Scripts.WorldMap.Biosphere
                 _biomeColor = Color.white;
                 _seasonTexture = null;
                 _weatherTexture = null;
+
+                this.color = Color.white;
+                this.texture = null;
             }
             public BiomeData(Biomes biome, Color color,
                 Texture2D seasonTexture, Texture2D weatherTexture)
@@ -206,6 +211,15 @@ namespace Assets.Scripts.WorldMap.Biosphere
                 _biomeColor = color;
                 _seasonTexture = seasonTexture;
                 _weatherTexture = weatherTexture;
+
+                this.color = color;
+                this.texture = null;
+            }
+
+            public BiomeData(Biomes aBiome, Color color, Texture2D texture) : this(aBiome)
+            {
+                this.color = color;
+                this.texture = texture;
             }
 
             public void SetBiomeColor(Color color)

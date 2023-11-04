@@ -253,11 +253,13 @@ namespace Assets.Scripts.WorldMap
 
             percentIntensity = Mathf.Abs(MathF.Cos(percentDistance * MathF.PI));
 
+            percentIntensity *= TemperatureMultiplier;
+
             percentIntensity = Mathf.Clamp(percentIntensity, minTemperature, 1);
 
            // percentIntensity = Mathf.Pow(percentIntensity, 3);
             
-            percentIntensity *= TemperatureMultiplier;
+            
 
             return percentIntensity;
         }

@@ -15,5 +15,10 @@ namespace Assets.Scripts.WorldMap.Biosphere
         {
             return GetBiomeData(Biomes.Ocean);
         }
+
+        public void Init()
+        {
+
+        }
     }
 }

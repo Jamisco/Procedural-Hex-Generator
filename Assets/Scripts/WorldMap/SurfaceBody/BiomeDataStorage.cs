@@ -19,7 +19,7 @@ namespace Assets.Scripts.WorldMap.Biosphere
 
         private static readonly string SavePath = "Assets/Materials/BiomeDataStorage.asset";
 
-        public Dictionary<Biomes, BiomeData> GetData()
+        public Dictionary<Biomes, BiomeData> GetData() 
         {
             Dictionary<Biomes, BiomeData> data = new Dictionary<Biomes, BiomeData>();
 
