@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -120,6 +121,35 @@ namespace Assets.Scripts.Miscellaneous
 
             return log;
         }
+
+        public static bool TryRemoveElementsInRange<TValue>([DisallowNull] this IList<TValue> list, int index, int count, [NotNullWhen(false)] out Exception error)
+        {
+            try
+            {
+                if (list is List<TValue> genericList)
+                {
+                    genericList.RemoveRange(index, count);
+                }
+                else
+                {
+                    if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));
+                    if (count < 0) throw new ArgumentOutOfRangeException(nameof(count));
+                    if (list.Count - index < count) throw new ArgumentException("index and count do not denote a valid range of elements in the list");
+
+                    for (var i = count; i > 0; --i)
+                        list.RemoveAt(index);
+                }
+            }
+            catch (Exception e)
+            {
+                error = e;
+                return false;
+            }
+
+            error = null;
+            return true;
+        }
+
 
         public static Mesh CloneMesh(this Mesh parent)
         {
