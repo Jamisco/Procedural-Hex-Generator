@@ -9,6 +9,7 @@ using static Assets.Scripts.WorldMap.HexTile;
 using static Assets.Scripts.WorldMap.HexTile.HexVisualData;
 using static UnityEngine.GraphicsBuffer;
 
+// Pathfinder edit.
 public class GridSpawner : MonoBehaviour
 {
     // Start is called before the first frame update
