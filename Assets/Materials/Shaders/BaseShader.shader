@@ -1,4 +1,4 @@
-  Shader "Example/TestShader" 
+  Shader "BaseShader" 
   { 
     Properties
     {

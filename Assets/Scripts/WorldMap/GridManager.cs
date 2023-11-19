@@ -279,6 +279,7 @@ namespace Assets.Scripts.WorldMap
         }
         public void DrawChunkInstanced()
         {
+            SetAllChunksStatus(false);
             // 100 x100 10 fps
             foreach (HexChunk chunk in hexChunks)
             {
