@@ -142,7 +142,7 @@ namespace TMPro
 
 
                 #region Example of Word Selection
-                // Check if Mouse intersects any words and if so assign a random color to that word.
+                // Check if Mouse intersects any words and if so assign a random BiomeColor to that word.
                 int wordIndex = TMP_TextUtilities.FindIntersectingWord(m_TextComponent, Input.mousePosition, m_Camera);
                 if (wordIndex != -1 && wordIndex != m_lastWordIndex)
                 {
@@ -158,7 +158,7 @@ namespace TMPro
 
 
                 #region Example of Line Selection
-                // Check if Mouse intersects any words and if so assign a random color to that word.
+                // Check if Mouse intersects any words and if so assign a random BiomeColor to that word.
                 int lineIndex = TMP_TextUtilities.FindIntersectingLine(m_TextComponent, Input.mousePosition, m_Camera);
                 if (lineIndex != -1 && lineIndex != m_lastLineIndex)
                 {

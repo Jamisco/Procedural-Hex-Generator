@@ -1,212 +1,256 @@
-﻿using System;
+﻿using Assets.Scripts.Miscellaneous;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using Unity.VisualScripting;
-using UnityEditor;
 using UnityEngine;
-using UnityEngine.UIElements;
 using static Assets.Scripts.WorldMap.Biosphere.SurfaceBody;
-using static Assets.Scripts.WorldMap.GridManager;
 using static Assets.Scripts.WorldMap.HexTile;
-using static UnityEditor.FilePathAttribute;
-using Debug = UnityEngine.Debug;
+using static Assets.Scripts.Miscellaneous.ExtensionMethods;
+using static Assets.Scripts.WorldMap.FusedMesh;
+using Unity.VisualScripting;
+using static Assets.Scripts.WorldMap.GridManager;
 
 namespace Assets.Scripts.WorldMap
 {
+    // Due to the nature of this class, it will have to work hand in hand with the Gridmanager is order to properly share data. It is recommended that you refrain from doing specific functions that would limit the gridmanager from being able to controlt them. For example, a chunk should not be the one to highlight itself, but rather the gridmanager should be the one to do it. A chunk should not store the data, data about itself that isnt nessacary for it to display its meshes. We should force the Gridmanager to store that.
+
+    // Max hex count per chunk is about 1600. See Gridmanager.CreateHexChunks() for details
     [RequireComponent(typeof(MeshFilter))]
     [RequireComponent(typeof(MeshRenderer))]
     [RequireComponent(typeof(MeshCollider))]
     public class HexChunk : MonoBehaviour
     {
         // since the hexes positions are set regardless of the position of the chunk, we simply spawn the chunk at 0,0
-        public static Matrix4x4 SpawnPosition = Matrix4x4.Translate(Vector3.zero);
+        private Matrix4x4 SpawnPosition = Matrix4x4.Translate(Vector3.zero);
 
-        public static Material MainMaterial;
-        public static Material InstanceMaterial;
+        private GridManager MainGrid;
 
-        public static BiomeVisual BiomeVisual;
-        
-        public List<HexTile> hexes;
-        private ConcurrentBag<HexTile> conHexes;
+        private Material MainMaterial;
+        private Material InstanceMaterial;
 
-        public ConcurrentDictionary<Vector2Int, HexTile> hexDictionary = new ConcurrentDictionary<Vector2Int, HexTile>();
+        private HexSettings hexSettings;
 
-        public List<Material> materials = new List<Material>();
+        private List<HexTile> hexes;
 
+        private ConcurrentDictionary<Vector2Int, HexTile> hexDictionary = new ConcurrentDictionary<Vector2Int, HexTile>();
+
+        private Dictionary<HexVisualData, List<HexTile>> biomeTiles = new Dictionary<HexVisualData, List<HexTile>>();
+
+        private Dictionary<HexVisualData, FusedMesh> biomeFusedMeshes = new Dictionary<HexVisualData, FusedMesh>();
+
+        private List<Material> materials = new List<Material>();
+        private List<MaterialPropertyBlock> blocks = new List<MaterialPropertyBlock>();
+
+        // the highlight layer has to be above the base layer.
+        // how high above do u want it to be
+        private static readonly Vector3 HighlightLayerOffset = new Vector3(0, .001f, 0);
+        private static readonly Vector3 BorderLayerOffset = new Vector3(0, .002f, 0);
+
+
+        // you must be aware that technically speaking, all these chunks are at position (0,0). It is their meshes/hexes that are place appriopriately
         public Vector2Int StartPosition;
-
         public BoundsInt ChunkBounds;
+        private Bounds boundsCheck;
 
         RenderParams renderParams;
         RenderParams instanceParam;
+
+        MeshFilter BorderMeshFilter;
+        MeshFilter HighlightMeshFilter;
+
+
+        GameObject BorderLayer;
+        GameObject HighlightLayer;
+
+        FusedMesh HighlightedHexes;
+        FusedMesh ActiveHexBorders;
+        
+        private void CreateLayerObjects()
+        {
+            BorderLayer = new GameObject("BorderLayer");
+            HighlightLayer = new GameObject("HighlightLayer");
+
+            BorderLayer.transform.SetParent(transform);
+            HighlightLayer.transform.SetParent(transform);
+
+            BorderLayer.transform.position += BorderLayerOffset;
+            HighlightLayer.transform.position += HighlightLayerOffset;
+
+            HighlightMeshFilter = HighlightLayer.AddComponent<MeshFilter>();
+            HighlightMeshFilter.mesh.MarkDynamic();
+
+            BorderMeshFilter = BorderLayer.AddComponent<MeshFilter>();
+            BorderMeshFilter.mesh.MarkDynamic();
+        }
         private void Awake()
         {
+            CreateLayerObjects();
+
+            BorderLayer = gameObject.GetGameObject("BorderLayer");
+            HighlightLayer = gameObject.GetGameObject("HighlightLayer");
+
+            BorderLayer.transform.position += BorderLayerOffset;
+            HighlightLayer.transform.position += HighlightLayerOffset;
+
+            HighlightMeshFilter = HighlightLayer.GetComponent<MeshFilter>();
+            HighlightMeshFilter.mesh.MarkDynamic();
+
+            BorderMeshFilter = BorderLayer.GetComponent<MeshFilter>();
+            BorderMeshFilter.mesh.MarkDynamic();
+        }
+        public void Initialize(GridManager grid, GridData gridData, BoundsInt aBounds)
+        {
+            MainMaterial = gridData.MainMaterial;
+            InstanceMaterial = gridData.InstanceMaterial;
+
             renderParams = new RenderParams(MainMaterial);
             instanceParam = new RenderParams(InstanceMaterial);
-        }
 
-        public void Initialize(BoundsInt aBounds)
-        {
+            MainGrid = grid;
+
             ChunkBounds = aBounds;
             ChunkBounds.ClampToBounds(aBounds);
 
             hexes = new List<HexTile>(aBounds.size.x * aBounds.size.y);
-            
-            // the reason we use a concurrent bag is because it is thread safe
-            // thus you can add to it from multiple from threads
-            conHexes = new ConcurrentBag<HexTile>();
-        }
 
-        public bool IsInChunk(HexTile hex)
-        {
-            if (ChunkBounds.Contains((Vector3Int)hex.GridCoordinates))
-            {
-                return true;
-            }
+            HighlightedHexes = new FusedMesh();
+            ActiveHexBorders = new FusedMesh();
 
-            return false;
-        }
-
-        public bool IsInChunk(int x, int y)
-        {
-            // its wrong for some reason, idk why but you must use bounds
-            Bounds hey = new Bounds(ChunkBounds.center, ChunkBounds.size);
-
-            if (hey.Contains(new Vector3Int(x, y, 0)))
-            {
-                return true;
-            }
-
-            return false;
+            boundsCheck = new Bounds(ChunkBounds.center, ChunkBounds.size);
         }
         public void AddHex(HexTile hex)
         {
             // the reason we use a concurrent bag is because it is thread safe
             // thus you can add to it from multiple from threads
-
-            conHexes.Add(hex);
             hexDictionary.TryAdd(hex.GridCoordinates, hex);
         }
-
-        Dictionary<BiomeProperties, List<CombineInstance>> subMeshes = new Dictionary<BiomeProperties, List<CombineInstance>>();
-
-        public void DrawMesh()
+        
+        // This splits all hexes into thesame visual groups, so they can be rendered together
+        private void SplitDictionary()
         {
-            subMeshes.Clear();
-            hexes = conHexes.ToList();
-            Simplify();
+            if (hexes.Count != hexDictionary.Count)
+            {
+                hexes = hexDictionary.Values.ToList();
+            }
+
+            biomeTiles.Clear();
+            
+            foreach (HexTile hex in hexes)
+            {
+                HexVisualData props;
+                
+                props = hex.VisualData;
+                
+                if (biomeTiles.ContainsKey(props))
+                {
+                    biomeTiles[props].Add(hex);
+                }
+                else
+                {
+                    biomeTiles.TryAdd(props, new List<HexTile>() { hex });
+                }
+            }
+
+            //biomeTiles = bt.ToDictionary(x => x.Key, x => x.Value.ToList());
         }
-        private void Simplify()
+
+        /// <summary>
+        /// This will split the hexes into their respective visual groups and draw them. Note this is a very expensive operation and should only be done when trying to Initially Draw the chunk or REDRAWING the whole chunk
+        /// </summary>
+        public void InitiateDrawProtocol()
+        {    
+            SplitDictionary();
+            FuseMeshes();
+        }
+        private void FuseMeshes()
         {
-            Mesh mesh = new Mesh();
-
-            subMeshes.Clear();
+            List<MeshData> meshes = new List<MeshData>();
+            List<int> hashes = new List<int>();
+            List<Vector3> offsets = new List<Vector3>();
             
-            List<CombineInstance> tempCombine = new List<CombineInstance>();
-            CombineInstance instance;
+            // Essentially, this tells us this
+            // for each index, when inserting triangles at a specific index, you must offset the vertex count by the givin variable
+            // and you must offset the insert position using the triStartIndex
+            List<(int vertCount, int triStartIndex)> vertTriIndex = new List<(int, int)>();
+            (int totalVerts, int totalTri) totals = (0, 0);
+            // the below loop accounts for 90% of the time taken for this method 
+            // this entire method alone accounts for 60% of the time taken to draw the entire map
 
-            // split and store the meshes into submeshes based on their biome
-            for (int i = 0; i < hexes.Count; i++)
+            // drawing the hexes individuall is horrendouesly ineffective
+            // a 100 x 100 map with 1000 hexes per chunk averages 5 - 10 fps
+
+            foreach (KeyValuePair<HexVisualData, List<HexTile>> biomes in biomeTiles)
             {
-                HexTile hex = hexes[i];               
+                ExtractData(biomes.Value);
 
-                subMeshes.TryGetValue(hex.HexBiomeProperties, out tempCombine);
-
-                if(tempCombine == null)
-                {
-                    tempCombine = new List<CombineInstance>();
-                    subMeshes.Add(hex.HexBiomeProperties, tempCombine);
-                }
-
-                instance = new CombineInstance();
-                
-                instance.mesh = hex.DrawMesh();
-
-                List<Color> colors = new List<Color>();
-
-                for (int c = 0; c < instance.mesh.vertexCount; c++)
-                {
-                    colors.Add(hex.HexBiomeProperties.BiomeColor);
-                }
-
-                instance.mesh.SetColors(colors);
-
-                instance.transform = Matrix4x4.Translate(hexes[i].Position);
-                tempCombine.Add(instance);
-
+                // this will fuse all the meshes together. The fuse constructor using multithreading inorder to increase the speed
+                biomeFusedMeshes.Add(biomes.Key,
+                    new FusedMesh(meshes, hashes, offsets, vertTriIndex, totals));
             }
 
-            Mesh preMesh;
+            DrawMesh();
 
-            List<CombineInstance> prelist = new List<CombineInstance>();
-
-            // combine all the meshes of thesame biome into one
-            foreach (List<CombineInstance> item in subMeshes.Values)
+            void ExtractData(List<HexTile> hexes)
             {
-                CombineInstance subInstance = new CombineInstance();
-                preMesh = new Mesh();
+                meshes.Clear();
+                hashes.Clear();
+                offsets.Clear();
+                vertTriIndex.Clear();
 
-                preMesh.CombineMeshes(item.ToArray());
+                int vert = 0;
+                int tri = 0;
 
-                subInstance.mesh = preMesh;
-                
-                prelist.Add(subInstance);
+                foreach (HexTile hex in hexes)
+                {
+                    meshes.Add(new MeshData(hex.GetMesh()));
+                    hashes.Add(hex.GetHashCode());
+                    offsets.Add(hex.Position);
+                      
+                    vertTriIndex.Add((vert, tri));
+                    
+                    vert += hex.GetMesh().vertexCount;
+                    tri += hex.GetMesh().triangles.Count();
+                    
+                }
+
+                totals = (vert, tri);
             }
+        }
+        private void DrawMesh()
+        {
+            // The downside of this is that every time you change the mesh of any fused mesh you have to recombine ALL the other meshes
+            // thankfully, it is not that expensive to do so, accounts for at most 10% of the time taken to draw the entire map
+            Mesh mainMeshes =
+                FusedMesh.CombineToSubmesh(biomeFusedMeshes.Values.ToList());
 
-            mesh.CombineMeshes(prelist.ToArray(), false, false);
-            
             SetMaterialProperties();
 
             SetMaterialPropertyBlocks();
 
-            GetComponent<MeshFilter>().mesh = mesh;
-            GetComponent<MeshCollider>().sharedMesh = mesh;
+            GetComponent<MeshFilter>().mesh = mainMeshes;
+            GetComponent<MeshCollider>().sharedMesh = mainMeshes;
         }
-
-        private void Update()
-        {
-            //CheckMouseEnter();
-        }
-
-        private void OnMouseOver()
-        {
-            CheckMouseEnter();
-        }
-        void CheckMouseEnter()
-        {
-            if (Input.GetMouseButton(0))
-            {
-                Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-
-                RaycastHit hit;
-
-                if (Physics.Raycast(ray, out hit, 1000))
-                {
-                    // we subtract the position of the chunk because the hexes are positioned relative to the chunk, so if a chunk is at 0,10 and the hex is at 0,0, the hex is actually at 0,10,0 in world position
-                    
-                    GetClosestHex(hit.point - transform.position);
-
-                }
-            }
-        }
-
+        
         /// <summary>
         /// Since we combined all of the individual meshes into one, there exist only one collider. THus we need to find the hex that was clicked on base on the position. 
         /// We do this by getting all the possible grid positions within the vicinity of the mouse click and then we measure between the positions of said grid positions and the mouse click position. The grid position with the smallest distance is the one that was clicked on.
         /// </summary>
         /// <param name="position"></param>
         /// <returns></returns>
-        private HexTile GetClosestHex(Vector3 position)
+        public HexTile GetClosestHex(Vector3 position)
         {
             // average time to find hex is 0.002 seconds
             HexTile hex;
             List<Vector2Int> possibleGridCoords = new List<Vector2Int>();
 
-            Vector2Int gridPos = GetGridCoordinate(position);
+            Vector2Int gridPos = GetGridCoordinate(position, hexSettings);
+
+            if (IsInChunk(gridPos) == false)
+            {
+                throw HexNotFoundException;
+            }
+
             possibleGridCoords.Add(gridPos);
 
             Vector2Int gridPos2 = new Vector2Int(gridPos.x + 1, gridPos.y);
@@ -230,14 +274,14 @@ namespace Assets.Scripts.WorldMap
                 float shortestDistance = float.MaxValue;
 
                 HexTile posHex = null;
-                
+
                 foreach (Vector2Int item in coords)
                 {
                     posHex = null;
 
                     hexDictionary.TryGetValue(item, out posHex);
 
-                    if(posHex == null)
+                    if (posHex == null)
                     {
                         continue;
                     }
@@ -258,53 +302,226 @@ namespace Assets.Scripts.WorldMap
             }
         }
 
-        private void SetMaterialProperties()
+        private void RemoveHexFromLists(HexTile hex)
         {
-            if (BiomeVisual == BiomeVisual.Color)
+            hexDictionary.TryRemove(hex.GridCoordinates, out HexTile hexTile);
+
+            HexVisualData props = hex.VisualData;
+
+            biomeTiles.Remove(props);
+        }
+
+        public void RemoveHex(HexTile hex)
+        {
+            RemoveHexFromLists(hex);
+
+            HexVisualData props = hex.VisualData;
+
+            biomeFusedMeshes[props].RemoveMesh(hex.GetHashCode());
+
+            UnHighlightHex(hex);
+
+            DeactivateHexBorder(hex);
+
+            DrawMesh();
+        }
+
+        Dictionary<HexTile, Color> changedColor = new Dictionary<HexTile, Color>();
+
+        public bool IsInChunk(HexTile hex)
+        {
+            if (ChunkBounds.Contains((Vector3Int)hex.GridCoordinates))
             {
-                SetMaterialColor();
+                return true;
+            }
+
+            return false;
+        }
+
+        public bool IsInChunk(int x, int y)
+        {
+            // its wrong for some reason, idk why but you must use bounds
+
+            if (boundsCheck.Contains(new Vector3Int(x, y, 0)))
+            {
+                return true;
+            }
+
+            return false;
+        }
+        public bool IsInChunk(Vector2Int position)
+        {
+            // its wrong for some reason, idk why but you must use bounds
+
+            if (boundsCheck.Contains(new Vector3Int(position.x, position.y, 0)))
+            {
+                return true;
+            }
+
+            return false;
+        }
+        public bool IsIntersected(Bounds bounds)
+        {
+            if (boundsCheck.Intersects(bounds))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private void AddVisualData(HexTile hex)
+        {
+            FusedMesh fused = null;
+
+            biomeFusedMeshes.TryGetValue(hex.VisualData, out fused);
+
+            // if the hex visual data is not already in the dictionary, create a new fused mesh for the new visual data and add it to the dictionary
+            // if it is, add the hex mesh to the fused mesh
+            
+            if (fused == null)
+            {
+                fused = new FusedMesh();
+                fused.AddMesh(hex.GetMesh(), hex.GetHashCode(), hex.Position);
+
+                biomeFusedMeshes.Add(hex.VisualData, fused);
             }
             else
             {
-                SetMaterialTexture();
+                biomeFusedMeshes[hex.VisualData].AddMesh(hex.GetMesh(), hex.GetHashCode(), hex.Position);
             }
         }
-        private void SetMaterialColor()
+        public void RemoveVisualData(HexTile hex)
         {
-            for (int i = 0; i < subMeshes.Count; i++)
+            FusedMesh fused = null;
+
+            biomeFusedMeshes.TryGetValue(hex.VisualData, out fused);
+
+            if (fused != null)
             {
-                Material newMat = new Material(MainMaterial);
-                Color color = subMeshes.Keys.ElementAt(i).BiomeColor;
-
-                MaterialPropertyBlock block = new MaterialPropertyBlock();
-
-                block.SetFloat("_UseColor", 1);
-                block.SetColor("_Color", color);
-
-                blocks.Add(block);
-
-                materials.Add(newMat);
+                fused.RemoveMesh(hex.GetHashCode());
             }
-        }
-        private void SetMaterialTexture()
+        }  
+
+        public void UpdateVisualData(HexTile hex)
         {
-            for (int i = 0; i < subMeshes.Count; i++)
-            {
-                Material newMat = new Material(MainMaterial);
+            RemoveVisualData(hex);
 
-                Texture2D texture = subMeshes.Keys.ElementAt(i).BiomeTexture;
-
-                newMat.SetTexture("_MainTex", texture);
-
-                materials.Add(newMat);
-            }
+            AddVisualData(hex);
         }
 
-        List<MaterialPropertyBlock> blocks = new List<MaterialPropertyBlock>();
-        public void SetMaterialPropertyBlocks()
+        public void ChangeColor(HexTile hex, Color newColor)
+        {
+            // first we remove the hex mesh
+            RemoveVisualData(hex);
+
+            // we then change its visual data
+            hex.VisualData.SetColor(newColor);
+
+            // then we add it back to the fused mesh
+            AddVisualData(hex);
+            
+            // draw the change
+            DrawMesh();
+        }
+        public void HighlightHex(HexTile hex)
+        {
+            HighlightedHexes.AddMesh(hexSettings.GetInnerHighlighter(),
+                hex.GetHashCode(), hex.Position);
+
+            HighlightMeshFilter.mesh = HighlightedHexes.Mesh;
+        }
+        public void UnHighlightHex(HexTile hex)
+        {
+            bool removed = HighlightedHexes.RemoveMesh(hex.GetHashCode());
+
+            if (removed)
+            {
+                HighlightMeshFilter.mesh = HighlightedHexes.Mesh;
+            }
+        }
+        public void ActivateHexBorder(HexTile hex)
+        {
+            int[] sides = { 0, 1, 2, 3, 4, 5 };
+
+            ActiveHexBorders.AddMesh(hexSettings.GetOuterHighlighter(sides),
+                                     hex.GetHashCode(), hex.Position);
+
+            BorderMeshFilter.mesh = ActiveHexBorders.Mesh;
+        }
+        public void DeactivateHexBorder(HexTile hex)
+        {
+            bool removed = ActiveHexBorders.RemoveMesh(hex.GetHashCode());
+
+            if(removed)
+            {
+                BorderMeshFilter.mesh = ActiveHexBorders.Mesh;
+            }
+        }
+        private void SetMaterialProperties()
+        {
+            blocks.Clear();
+            materials.Clear();
+
+            for (int i = 0; i < biomeFusedMeshes.Count; i++)
+            {
+                HexVisualData data = biomeFusedMeshes.Keys.ElementAt(i);
+
+                switch (data.VisualOption)
+                {
+                    case HexVisualData.HexVisualOption.Color:
+                        AddMaterial_Color(data);
+                        break;
+                    case HexVisualData.HexVisualOption.BaseTextures:
+                    case HexVisualData.HexVisualOption.AllTextures:
+                        AddMaterial_Texture(data);
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+        private void AddMaterial_Color(HexVisualData data)
+        {
+            Material newMat = new Material(MainMaterial);
+            Color color = data.HexColor;
+            float lerp = data.WeatherLerp;
+
+            MaterialPropertyBlock block = new MaterialPropertyBlock();
+
+            block.SetFloat("_UseColor", 1);
+            block.SetColor("_Color", color);
+            newMat.SetFloat("_Text2Lerp", lerp);
+
+            blocks.Add(block);
+
+            materials.Add(newMat);
+        }
+        private void AddMaterial_Texture(HexVisualData data)
+        {
+            Material newMat = new Material(MainMaterial);
+
+            Texture2D texture = data.BaseTexture;
+
+            Texture texture2 = data.OverlayTexture1;
+
+            float lerp = data.WeatherLerp;
+
+            newMat.SetTexture("_MainTex", texture);
+
+            if (texture2 != null)
+            {
+                newMat.SetTexture("_Texture1", texture2);
+                newMat.SetFloat("_Text2Lerp", lerp);
+            }
+
+            // texture.lerp
+            materials.Add(newMat);
+        }
+        private void SetMaterialPropertyBlocks()
         {
             Renderer renderer = GetComponent<Renderer>();
-            
+
             int count = renderer.materials.Length;
 
             if (blocks.Count != count)
@@ -312,99 +529,105 @@ namespace Assets.Scripts.WorldMap
                 renderer.materials = materials.ToArray();
             }
 
-            // for the time being, this will only adjust the color of the material
+            // for the time being, this will only adjust the HexColor of the material
             for (int i = 0; i < blocks.Count; i++)
             {
                 renderer.SetPropertyBlock(blocks[i], i);
             }
         }
+        
+        #region The Below is for Gpu Mesh generation, Dont touch unless you know what       you are doing
 
-
-        // the limit for graphic instances is 500
-        static int maxLimit = 500;
-        public struct MyInstanceData
-        {
-            public Matrix4x4 objectToWorld; // We must specify object-to-world transformation for each instance
-            public uint renderingLayerMask; // In addition we also like to specify rendering layer mask per instence.
-
-            public int hexIndex;
-        };
-
-        List<List<MyInstanceData>> data2 = new List<List<MyInstanceData>>();
-        MyInstanceData[] data;
-        private void SetData()
-        {
-            // Data
-            data = new MyInstanceData[hexes.Count];
-            data2.Clear();
-
-            Parallel.For(0, hexes.Count, x =>
+        // the limit for graphic instances is 1000
+        private static int maxLimit = 500;
+            List<List<MyInstanceData>> data2 = new List<List<MyInstanceData>>();
+            List<List<Vector4>> color2 = new List<List<Vector4>>();
+            MyInstanceData[] data;
+            public struct MyInstanceData
             {
-                MyInstanceData d = new MyInstanceData();
-                d.objectToWorld = Matrix4x4.Translate(hexes[x].Position);
-                d.renderingLayerMask = 0;
+                public Matrix4x4 objectToWorld; // We must specify object-to-world transformation for each instance
+                public uint renderingLayerMask; // In addition we also like to specify rendering layer mask per instence.
 
-                d.hexIndex = x;
-                data[x] = d;
-            });
+                public int hexIndex;
+            };
 
-            while (data.Any())
+            private void SetData()
             {
-                data2.Add(data.Take(maxLimit).ToList());
-                
-                data = data.Skip(maxLimit).ToArray();
-            }
-        }
+                // Data
+                data = new MyInstanceData[hexes.Count];
+                data2.Clear();
 
-        List<List<Vector4>> color2 = new List<List<Vector4>>();
-        private void SetColor()
-        {
-            color2.Clear();
-            Vector4[] aColor;
-            
-            foreach (List<MyInstanceData> item in data2)
-            {
-                aColor = new Vector4[item.Count];
+                Vector3 transformOffset = transform.position;
 
-                Parallel.For(0, item.Count, x =>
+                Parallel.For(0, hexes.Count, x =>
+                    {
+                        MyInstanceData d = new MyInstanceData();
+                        d.objectToWorld = Matrix4x4.Translate(hexes[x].Position + transformOffset);
+                        d.renderingLayerMask = 0;
+
+                        d.hexIndex = x;
+                        data[x] = d;
+                    });
+
+                while (data.Any())
                 {
-                    aColor[x] = 
-                    hexes[item[x].hexIndex].HexBiomeProperties.BiomeColor;
-                });
+                    data2.Add(data.Take(maxLimit).ToList());
 
-                color2.Add(aColor.ToList());
+                    data = data.Skip(maxLimit).ToArray();
+                }
             }
-        }
 
-        Mesh instanceMesh;
-        MaterialPropertyBlock instanceBlock;
-        public void RenderMesh()
-        {
-            if (data2.Count == 0)
+            private void SetColor()
             {
-                SetData();
-                instanceMesh = hexes[0].DrawMesh();
+                color2.Clear();
+                Vector4[] aColor;
+
+                foreach (List<MyInstanceData> item in data2)
+                {
+                    aColor = new Vector4[item.Count];
+
+                    Parallel.For(0, item.Count, x =>
+                    {
+                        Color col =
+                        hexes[item[x].hexIndex].VisualData.HexColor;;
+
+                        aColor[x] = col;
+                    });
+
+                    color2.Add(aColor.ToList());
+                }
             }
 
-            SetColor();
-
-            int i = 0;
-
-            foreach (List<MyInstanceData> item in data2)
+            Mesh instanceMesh;
+            MaterialPropertyBlock instanceBlock;
+            public void DrawInstanced()
             {
-                instanceBlock = new MaterialPropertyBlock();
+                if (data2.Count == 0)
+                {
+                    SetData();
+                    instanceMesh = hexes[0].GetMesh();
+                }
 
-                Vector4[] v = color2.ElementAt(i).ToArray();
+                SetColor();
 
-                instanceBlock.SetVectorArray("_MeshColors", v);
-                instanceParam.matProps = instanceBlock;
+                int i = 0;
 
-                Graphics.RenderMeshInstanced(instanceParam, instanceMesh, 0, item);
+                foreach (List<MyInstanceData> item in data2)
+                {
+                    instanceBlock = new MaterialPropertyBlock();
 
-                i++;
+                    Vector4[] v = color2.ElementAt(i).ToArray();
+
+                    instanceBlock.SetVectorArray("_MeshColors", v);
+                    instanceParam.matProps = instanceBlock;
+
+                    Graphics.RenderMeshInstanced(instanceParam, instanceMesh, 0, item);
+
+                    i++;
+                }
             }
-        }
 
+#endregion
 
     }
 
@@ -412,7 +635,7 @@ namespace Assets.Scripts.WorldMap
     public struct SimplifiedHex
     {
         public List<HexTile> hexRows;
-        
+
         public List<Vector3> Vertices;
         public List<int> Triangles;
         List<Vector2> UV;
@@ -461,7 +684,6 @@ namespace Assets.Scripts.WorldMap
                 };
             }
         }
-    
 
         private void Simplify()
         {
@@ -481,14 +703,14 @@ namespace Assets.Scripts.WorldMap
                 hex = hexRows[i];
 
                 // normally we would set the edges incrementally, becuase the hex might have different materials im between
-                
+
                 if (i == 0)
                 {
                     leftTop = hex.GetWorldVertexPosition(5);
                     leftBot = hex.GetWorldVertexPosition(4);
                 }
 
-                if(i == hexRows.Count - 1)
+                if (i == hexRows.Count - 1)
                 {
                     rightTop = hex.GetWorldVertexPosition(1);
                     rightBot = hex.GetWorldVertexPosition(2);
@@ -520,7 +742,7 @@ namespace Assets.Scripts.WorldMap
 
             Vertices.Add(rightBot); // - 2
             UV.Add(GetUV(2, hexRows.Count));
-            
+
             Vertices.Add(rightTop); // -1
             UV.Add(GetUV(1, hexRows.Count));
 
@@ -548,4 +770,5 @@ namespace Assets.Scripts.WorldMap
             return uv;
         }
     }
+
 }

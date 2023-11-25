@@ -82,7 +82,7 @@ namespace TMPro.Examples
                 m_textMesh.fontSize = 48;
                 m_textMesh.anchor = TextAnchor.MiddleCenter;
 
-                //m_textMesh.color = new Color32(255, 255, 0, 255);
+                //m_textMesh.BiomeColor = new Color32(255, 255, 0, 255);
             }
 
 
