@@ -49,7 +49,12 @@ namespace Assets.Scripts.WorldMap
 
 
         // you must be aware that technically speaking, all these chunks are at position (0,0). It is their meshes/hexes that are place appriopriately
-        public Vector2Int StartPosition;
+        private Vector2Int StartPosition;
+        
+        /// <summary>
+        /// DO NOT USE THIS TO CHECK IF A SPECIFIC HEX/COORDINATES IS IN THE CHUNK.
+        /// Does not work for an unknown reason
+        /// </summary>
         public BoundsInt ChunkBounds;
         private Bounds boundsCheck;
 
@@ -65,47 +70,50 @@ namespace Assets.Scripts.WorldMap
 
         FusedMesh HighlightedHexes;
         FusedMesh ActiveHexBorders;
-        
+
+        private readonly Material defaultSprite;
         private void CreateLayerObjects()
         {
-            BorderLayer = new GameObject("BorderLayer");
-            HighlightLayer = new GameObject("HighlightLayer");
+            if (BorderLayer == null)
+            {
+                BorderLayer = new GameObject("BorderLayer");
+                BorderLayer.transform.SetParent(transform);
+                BorderLayer.transform.position += BorderLayerOffset;
+                
+                BorderMeshFilter = BorderLayer.AddComponent<MeshFilter>();
+                BorderLayer.AddComponent<MeshRenderer>();
 
-            BorderLayer.transform.SetParent(transform);
-            HighlightLayer.transform.SetParent(transform);
+                //BorderMeshFilter.mesh.MarkDynamic();
+            }
 
-            BorderLayer.transform.position += BorderLayerOffset;
-            HighlightLayer.transform.position += HighlightLayerOffset;
+            if (HighlightLayer == null)
+            {
+                HighlightLayer = new GameObject("HighlightLayer");
 
-            HighlightMeshFilter = HighlightLayer.AddComponent<MeshFilter>();
-            HighlightMeshFilter.mesh.MarkDynamic();
+                HighlightLayer.transform.SetParent(transform);
 
-            BorderMeshFilter = BorderLayer.AddComponent<MeshFilter>();
-            BorderMeshFilter.mesh.MarkDynamic();
+                HighlightLayer.transform.position += HighlightLayerOffset;
+
+                HighlightMeshFilter = HighlightLayer.AddComponent<MeshFilter>();
+                HighlightLayer.AddComponent<MeshRenderer>();
+
+               // HighlightMeshFilter.mesh.MarkDynamic();
+            }
         }
-        private void Awake()
+        public void Initialize(GridManager grid, ref GridData gridData, BoundsInt aBounds)
         {
             CreateLayerObjects();
-
-            BorderLayer = gameObject.GetGameObject("BorderLayer");
-            HighlightLayer = gameObject.GetGameObject("HighlightLayer");
-
-            BorderLayer.transform.position += BorderLayerOffset;
-            HighlightLayer.transform.position += HighlightLayerOffset;
-
-            HighlightMeshFilter = HighlightLayer.GetComponent<MeshFilter>();
-            HighlightMeshFilter.mesh.MarkDynamic();
-
-            BorderMeshFilter = BorderLayer.GetComponent<MeshFilter>();
-            BorderMeshFilter.mesh.MarkDynamic();
-        }
-        public void Initialize(GridManager grid, GridData gridData, BoundsInt aBounds)
-        {
+            
+            hexSettings = gridData.HexSettings;
+            
             MainMaterial = gridData.MainMaterial;
             InstanceMaterial = gridData.InstanceMaterial;
 
             renderParams = new RenderParams(MainMaterial);
             instanceParam = new RenderParams(InstanceMaterial);
+
+            BorderLayer.GetComponent<MeshRenderer>().material = gridData.Sprites_Default;
+            HighlightLayer.GetComponent<MeshRenderer>().material = gridData.Sprites_Default;
 
             MainGrid = grid;
 
@@ -248,7 +256,7 @@ namespace Assets.Scripts.WorldMap
 
             if (IsInChunk(gridPos) == false)
             {
-                throw HexNotFoundException;
+                throw new HexException(position, HexException.ErrorType.NotInGrid);
             }
 
             possibleGridCoords.Add(gridPos);
@@ -330,14 +338,14 @@ namespace Assets.Scripts.WorldMap
 
         public bool IsInChunk(HexTile hex)
         {
-            if (ChunkBounds.Contains((Vector3Int)hex.GridCoordinates))
+            BoundsInt chunks = ChunkBounds;
+            if (boundsCheck.Contains((Vector3Int)hex.GridCoordinates))
             {
                 return true;
             }
 
             return false;
         }
-
         public bool IsInChunk(int x, int y)
         {
             // its wrong for some reason, idk why but you must use bounds
@@ -600,7 +608,7 @@ namespace Assets.Scripts.WorldMap
 
             Mesh instanceMesh;
             MaterialPropertyBlock instanceBlock;
-            public void DrawInstanced()
+            public void  DrawInstanced()
             {
                 if (data2.Count == 0)
                 {

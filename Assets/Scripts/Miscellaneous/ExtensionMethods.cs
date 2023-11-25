@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -19,6 +20,14 @@ namespace Assets.Scripts.Miscellaneous
         /// <param name="gameObject"></param>
         /// <param name="componentName"></param>
         /// <returns></returns>
+        /// 
+        public static void ClearLog()
+        {
+            var assembly = Assembly.GetAssembly(typeof(UnityEditor.Editor));
+            var type = assembly.GetType("UnityEditor.LogEntries");
+            var method = type.GetMethod("Clear");
+            method.Invoke(new object(), null);
+        }
         public static T GetComponentByName<T>(this GameObject gameObject, string componentName, bool includeActive = true) where T : Component
         {
             return gameObject.GetComponentsInChildren<T>(includeActive)
