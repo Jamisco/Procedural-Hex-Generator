@@ -168,8 +168,8 @@ public class pathfinder : MonoBehaviour
 
     private float GetTraversalCost(Vector2Int from, Vector2Int to)
     {
-        // to correct at the moment, need to retrieve the biomedata from the hextile given the hex tile position
-        BiomeData toBiomeData = GetBiomeDataAt(to);
+        // retrieves biome data on the given vector position (the location we want to check what terrain hex it is)
+        BiomeData toBiomeData = planet.GetBiomeData(to);
 
         // Check if the destination biome is of a type that should be in the closed set
         if (toBiomeData.Biome == Biomes.Ocean || toBiomeData.Biome == Biomes.Sea || toBiomeData.Biome == Biomes.Lake)
@@ -185,6 +185,9 @@ public class pathfinder : MonoBehaviour
             case Biomes.TropicalRainforest:
             case Biomes.TemperateRainforest:
             case Biomes.BorealForest:
+            case Biomes.Woodland:
+            case Biomes.TemperateGrassland:
+            case Biomes.TemerateSeasonalForest:
                 return 1.0f; // Normal traversal cost
 
             case Biomes.SubtropicalDesert:
