@@ -28,6 +28,20 @@ namespace Assets.Scripts.Miscellaneous
             var method = type.GetMethod("Clear");
             method.Invoke(new object(), null);
         }
+        public static Bounds OrthographicBounds3D(this Camera camera)
+        {
+            float screenAspect = camera.aspect;
+            float cameraHeight = camera.orthographicSize * 2;
+
+            Vector3 position = camera.transform.localPosition;
+
+            position.y = 0;
+
+            Bounds bounds = new Bounds(position,
+                            new Vector3(cameraHeight * screenAspect, 0,                                 cameraHeight));
+            return bounds;
+        }
+
         public static T GetComponentByName<T>(this GameObject gameObject, string componentName, bool includeActive = true) where T : Component
         {
             return gameObject.GetComponentsInChildren<T>(includeActive)

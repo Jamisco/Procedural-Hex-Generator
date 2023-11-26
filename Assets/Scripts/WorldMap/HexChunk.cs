@@ -21,7 +21,7 @@ namespace Assets.Scripts.WorldMap
     [RequireComponent(typeof(MeshCollider))]
     public class HexChunk : MonoBehaviour
     {
-        // since the hexes positions are set regardless of the position of the chunk, we simply spawn the chunk at 0,0
+        // since the hexes positions are set regardless of the gridPosition of the chunk, we simply spawn the chunk at 0,0
         private Matrix4x4 SpawnPosition = Matrix4x4.Translate(Vector3.zero);
 
         private GridManager MainGrid;
@@ -48,7 +48,7 @@ namespace Assets.Scripts.WorldMap
         private static readonly Vector3 BorderLayerOffset = new Vector3(0, .002f, 0);
 
 
-        // you must be aware that technically speaking, all these chunks are at position (0,0). It is their meshes/hexes that are place appriopriately
+        // you must be aware that technically speaking, all these chunks are at gridPosition (0,0). It is their meshes/hexes that are place appriopriately
         private Vector2Int StartPosition;
         
         /// <summary>
@@ -56,13 +56,32 @@ namespace Assets.Scripts.WorldMap
         /// Does not work for an unknown reason
         /// </summary>
         public BoundsInt ChunkBounds;
-        private Bounds boundsCheck;
+
+        /// <summary>
+        /// Use this to check if a grid position is in the chunk
+        /// </summary>
+        public Bounds GridBounds
+        {
+            get
+            {
+                return new Bounds(ChunkBounds.center, ChunkBounds.size);
+            }
+        }
+        public Bounds WorldBounds
+        {
+            get
+            {
+                return meshRenderer.bounds;
+            }
+        }
 
         RenderParams renderParams;
         RenderParams instanceParam;
 
         MeshFilter BorderMeshFilter;
         MeshFilter HighlightMeshFilter;
+
+        MeshRenderer meshRenderer;
 
 
         GameObject BorderLayer;
@@ -115,6 +134,9 @@ namespace Assets.Scripts.WorldMap
             BorderLayer.GetComponent<MeshRenderer>().material = gridData.Sprites_Default;
             HighlightLayer.GetComponent<MeshRenderer>().material = gridData.Sprites_Default;
 
+
+            meshRenderer = GetComponent<MeshRenderer>();
+
             MainGrid = grid;
 
             ChunkBounds = aBounds;
@@ -125,7 +147,10 @@ namespace Assets.Scripts.WorldMap
             HighlightedHexes = new FusedMesh();
             ActiveHexBorders = new FusedMesh();
 
-            boundsCheck = new Bounds(ChunkBounds.center, ChunkBounds.size);
+            Vector2Int minHex = new Vector2Int(ChunkBounds.min.x, ChunkBounds.min.z);
+            Vector2Int maxHex = new Vector2Int(ChunkBounds.max.x, ChunkBounds.max.z);
+            
+            //GridBounds = new Bounds(ChunkBounds.center, ChunkBounds.size);
         }
         public void AddHex(HexTile hex)
         {
@@ -179,7 +204,7 @@ namespace Assets.Scripts.WorldMap
             
             // Essentially, this tells us this
             // for each index, when inserting triangles at a specific index, you must offset the vertex count by the givin variable
-            // and you must offset the insert position using the triStartIndex
+            // and you must offset the insert gridPosition using the triStartIndex
             List<(int vertCount, int triStartIndex)> vertTriIndex = new List<(int, int)>();
             (int totalVerts, int totalTri) totals = (0, 0);
             // the below loop accounts for 90% of the time taken for this method 
@@ -241,8 +266,8 @@ namespace Assets.Scripts.WorldMap
         }
         
         /// <summary>
-        /// Since we combined all of the individual meshes into one, there exist only one collider. THus we need to find the hex that was clicked on base on the position. 
-        /// We do this by getting all the possible grid positions within the vicinity of the mouse click and then we measure between the positions of said grid positions and the mouse click position. The grid position with the smallest distance is the one that was clicked on.
+        /// Since we combined all of the individual meshes into one, there exist only one collider. THus we need to find the hex that was clicked on base on the gridPosition. 
+        /// We do this by getting all the possible grid positions within the vicinity of the mouse click and then we measure between the positions of said grid positions and the mouse click gridPosition. The grid gridPosition with the smallest distance is the one that was clicked on.
         /// </summary>
         /// <param name="position"></param>
         /// <returns></returns>
@@ -336,41 +361,31 @@ namespace Assets.Scripts.WorldMap
 
         Dictionary<HexTile, Color> changedColor = new Dictionary<HexTile, Color>();
 
-        public bool IsInChunk(HexTile hex)
-        {
-            BoundsInt chunks = ChunkBounds;
-            if (boundsCheck.Contains((Vector3Int)hex.GridCoordinates))
-            {
-                return true;
-            }
-
-            return false;
-        }
+        // It must be understood that the bounds for chunks has no Y axis, and thus, any bound check against a position must be done with the Y axis set to 0
         public bool IsInChunk(int x, int y)
         {
-            // its wrong for some reason, idk why but you must use bounds
-
-            if (boundsCheck.Contains(new Vector3Int(x, y, 0)))
+            // For some reason BoundsInt.Contains is not working...idk why
+            Bounds chunkBounds = new Bounds(ChunkBounds.center,  ChunkBounds.size);
+            
+            if (chunkBounds.Contains(new Vector3Int(x, 0, y)))
             {
                 return true;
             }
 
             return false;
         }
-        public bool IsInChunk(Vector2Int position)
+        public bool IsInChunk(HexTile hex)
         {
-            // its wrong for some reason, idk why but you must use bounds
-
-            if (boundsCheck.Contains(new Vector3Int(position.x, position.y, 0)))
-            {
-                return true;
-            }
-
-            return false;
+            return IsInChunk(hex.GridCoordinates);
         }
-        public bool IsIntersected(Bounds bounds)
+
+        public bool IsInChunk(Vector2Int gridPosition)
         {
-            if (boundsCheck.Intersects(bounds))
+            return IsInChunk(gridPosition.x, gridPosition.y);
+        }
+        public bool IsInsideBounds(Bounds bounds)
+        {
+            if (bounds.Intersects(WorldBounds))
             {
                 return true;
             }

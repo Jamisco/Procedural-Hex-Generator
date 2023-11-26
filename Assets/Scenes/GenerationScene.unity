@@ -1613,7 +1613,7 @@ MonoBehaviour:
   planet: {fileID: 1453448160}
   gridData:
     MaxHexPerChunk: 1000
-    MapSize: {x: 100, y: 100}
+    GridSize: {x: 100, y: 100}
     HexSettings: {fileID: 11400000, guid: c966756f1912d5a45a766bb5fef9cf23, type: 2}
     MainMaterial: {fileID: 2100000, guid: 1ce1c2e14903de741ae3026f3330e7bb, type: 2}
     InstanceMaterial: {fileID: 2100000, guid: 876cd32450d0f1a48835980ee51786b2, type: 2}

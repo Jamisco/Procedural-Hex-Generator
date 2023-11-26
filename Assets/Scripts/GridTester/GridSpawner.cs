@@ -1,3 +1,4 @@
+using Assets.Scripts.Miscellaneous;
 using Assets.Scripts.WorldMap;
 using System.Collections;
 using System.Collections.Generic;
@@ -36,7 +37,8 @@ public class GridSpawner : MonoBehaviour
     {
         OnMouseClick();
         //UpdateBounds();
-        HighlightOnHover();
+        //HighlightOnHover();
+        DisableUnseenChunks();
     }
 
     void UpdateBounds()
@@ -53,9 +55,9 @@ public class GridSpawner : MonoBehaviour
 
         List<HexVisualData> visualData;
 
-        mapSize = gridData.MapSize;
+        mapSize = gridData.GridSize;
         
-        planet.MainPlanet.PlanetSize = gridData.MapSize;
+        planet.MainPlanet.PlanetSize = gridData.GridSize;
         planet.GenerateData();
 
         visualData = ConvertToHexVisual(planet.GetAllBiomes());
@@ -125,16 +127,17 @@ public class GridSpawner : MonoBehaviour
     private void OnMouseClick()
     {
         HexData newData;
-
-        Vector3 mousePos = GetMousePosition();
-
-        if (!manager.PositionInGrid(mousePos))
-        {
-            return;
-        }
+        Vector3 mousePos;
 
         if (Mouse.current.leftButton.wasPressedThisFrame)
         {
+            mousePos = GetMousePosition();
+
+            if (!manager.PositionInGrid(mousePos))
+            {
+                return;
+            }
+            
             newData = 
                 manager.GetHexDataAtPosition(mousePos);
 
@@ -148,6 +151,8 @@ public class GridSpawner : MonoBehaviour
 
         if (Mouse.current.rightButton.wasPressedThisFrame)
         {
+            mousePos = GetMousePosition();
+            
             newData =
                manager.GetHexDataAtPosition(mousePos);
 
@@ -184,6 +189,12 @@ public class GridSpawner : MonoBehaviour
         //Debug.Log("Hovering Over Hex: " + newData.GridCoordinates.ToString());
     }
 
+    private void DisableUnseenChunks()
+    {
+        Bounds bounds = Camera.main.OrthographicBounds3D();
+
+        manager.SetChunkStatusIfInBoundsOtherwise(bounds, true);
+    }
     public void HighlightHex(HexData hex)
     {
         if (hex.IsNullOrEmpty())

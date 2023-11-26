@@ -252,32 +252,36 @@ namespace Assets.Scripts.WorldMap
             return z * (hexSettings.outerRadius * 1.5f) + (z * hexSettings.stepDistance);
         }
 
-        public static Vector3 GetMapSize(GridManager grid)
+        /// <summary>
+        /// This will give you the min and max positions of the hexes in the given area aswell as the dimensions(width and height) of the area
+        /// </summary>
+        /// <param name="minPos"></param>
+        /// <param name="maxPos"></param>
+        /// <param name="hexSettings"></param>
+        /// <returns></returns>
+        public static (Vector3 min, Vector3 max, Vector3 dimensions) 
+            GetVectorBounds(Vector2Int minPos, Vector2Int maxPos, HexSettings hexSettings)
         {
-            // This will work by getting the bottom left and top right hexes and getting the world positions of their vertices
+            HexTile minHex = new HexTile(minPos.x, minPos.y, hexSettings);
+            HexTile maxHex = new HexTile(maxPos.x, maxPos.y, hexSettings);
 
-            GridData data = grid.Data;
-
-            Vector3[] vertices = data.HexSettings.VertexCorners.ToArray();
-
-            Vector3 minPos = GetPosition(0, 0, 0, data.HexSettings);
-            Vector3 maxPos = GetPosition(data.MapSize.x - 1, 0, data.MapSize.y - 1, data.HexSettings);
-
-
-            float minX = vertices[4].x + minPos.x;
-            float minY = vertices[3].z + minPos.z;
-
-            float maxX = vertices[1].x + maxPos.x;
-            float maxY = vertices[0].z + maxPos.z;
+            float minX = minHex.GetWorldVertexPosition(4).x;
+            float minY = minHex.GetWorldVertexPosition(3).z;
 
             Vector3 min = new Vector3(minX, 0, minY);
+
+            float maxX = maxHex.GetWorldVertexPosition(1).x;
+            float maxY = maxHex.GetWorldVertexPosition(0).z;
+
             Vector3 max = new Vector3(maxX, 0, maxY);
 
-            Vector3 size = max - min;
-
-            return new Vector3(maxX - minX, 0, maxY - minY);
+            return (min, max, max - min);
         }
 
+        public static Vector3 GetDimensions(Vector2Int minPos, Vector2Int maxPos, HexSettings hexSettings)
+        {
+            return GetVectorBounds(minPos, maxPos, hexSettings).dimensions;
+        }
         /// <summary>
         /// Be aware that this function might not be accurate in some rare occasions. Due to the nature of the hex grid, there are some cases where the function will return the wrong value because of tiny discrepancies in distances. Thus it is recommended to also get the surrounding tiles and check if the tile is actually the closest one.
         /// </summary>
@@ -465,8 +469,8 @@ namespace Assets.Scripts.WorldMap
                 HexChunk chunk = hexChunks[chunkIndex];
                 int chunkBoundsXMin = chunk.ChunkBounds.xMin;
                 int chunkBoundsXMax = chunk.ChunkBounds.xMax;
-                int chunkBoundsYMin = chunk.ChunkBounds.yMin;
-                int chunkBoundsYMax = chunk.ChunkBounds.yMax;
+                int chunkBoundsYMin = chunk.ChunkBounds.zMin;
+                int chunkBoundsYMax = chunk.ChunkBounds.zMax;
 
                 for (int x = chunkBoundsXMin; x < chunkBoundsXMax; x++)
                 {
@@ -491,6 +495,26 @@ namespace Assets.Scripts.WorldMap
             }
 
             return hexTiles;
+        }
+
+        /// <summary>
+        /// This private constructor should only be used to measure the bounds of the hex. DO NOT USE IT FOR ANYTHING ELSE
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="z"></param>
+        /// <param name="hexSettings"></param>
+        private HexTile(int x, int z, HexSettings hexSettings)
+        {
+            AxialCoordinates = Axial.ToAxial(x, z);
+            GridCoordinates = new Vector2Int(x, z);
+
+            this.hexSettings = hexSettings;
+
+            Position = GetPosition(x, 0, z, hexSettings);
+
+            CreateBaseMesh();
+
+            SetBounds();
         }
 
         public HexTile(int x, int z, GridManager grid)
