@@ -152,7 +152,7 @@ public class pathfinder : MonoBehaviour
 
         foreach (Vector2Int direction in directions)
         {
-            Vector2Int neighborPos = new Vector2Int(from.x + direction.x, from.y + direction.y);
+            Vector2Int neighborPos = new(from.x + direction.x, from.y + direction.y);
 
             // Check if the neighbor is within the grid bounds
             if (neighborPos.x >= 0 && neighborPos.x < gridData.MapSize.x &&
