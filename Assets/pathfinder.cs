@@ -9,13 +9,14 @@ using static Assets.Scripts.WorldMap.GridManager;
 
 public class pathfinder : MonoBehaviour
 {
+    // Anthony and Felicity A* Pathfinding Algo
     // Public variables.
     public GridManager manager;
     public PlanetGenerator planet;
     public GridData gridData;
-    public Color hex_color;
-    public Vector2Int start_point;
-    public Vector2Int end_point;
+    public Color hexColor;
+    public Vector2Int startPoint;
+    public Vector2Int endPoint;
 
     // A* specific structures
     private Dictionary<Vector2Int, Node> allNodes = new Dictionary<Vector2Int, Node>();
@@ -32,12 +33,10 @@ public class pathfinder : MonoBehaviour
     }
 
     // Private variables.
-    List<Vector2Int> hex_pos = new List<Vector2Int>();
+    List<Vector2Int> hexPositions = new List<Vector2Int>();
     HexTile.HexVisualData hexColorData = new HexTile.HexVisualData();
-    // Will be changed by the algorithm.
-    // Should be a list of (x, y) positions. (each adjacent pos should be one after another)
-    List<Vector2Int> algo_path = new List<Vector2Int>();
-    int log_out_ctr = 0;
+    List<Vector2Int> algoPath = new List<Vector2Int>();
+    private int log_out_ctr = 0;
 
 
     // Start is called before the first frame update
@@ -60,12 +59,12 @@ public class pathfinder : MonoBehaviour
         {
             for (int y = 0; y < gridData.MapSize.y; y++)
             {
-                hex_pos.Add(new Vector2Int(x, y));
+                hexPositions.Add(new Vector2Int(x, y));
             }
         }
 
        
-        algo_path.Add(start_point);
+        algoPath.Add(startPoint);
     }
 
     // Update is called once per frame
@@ -92,14 +91,14 @@ public class pathfinder : MonoBehaviour
     {
         InitializeNodes();
 
-        openSet.Add(start_point);
-        allNodes[start_point].GCost = 0;
-        allNodes[start_point].HCost = CalculateHeuristic(start_point, end_point);
+        openSet.Add(startPoint);
+        allNodes[startPoint].GCost = 0;
+        allNodes[startPoint].HCost = CalculateHeuristic(startPoint, endPoint);
 
         while (openSet.Count > 0)
         {
             Vector2Int current = GetLowestFCostNode(openSet);
-            if (current == end_point)
+            if (current == endPoint)
             {
                 ReconstructPath(current);
                 break;
@@ -117,7 +116,7 @@ public class pathfinder : MonoBehaviour
                 {
                     allNodes[neighbor].Parent = allNodes[current];
                     allNodes[neighbor].GCost = tentativeGCost;
-                    allNodes[neighbor].HCost = CalculateHeuristic(neighbor, end_point);
+                    allNodes[neighbor].HCost = CalculateHeuristic(neighbor, endPoint);
 
                     if (!openSet.Contains(neighbor))
                         openSet.Add(neighbor);
@@ -129,7 +128,7 @@ public class pathfinder : MonoBehaviour
     private void InitializeNodes()
     {
         allNodes.Clear();
-        foreach (var hex in hex_pos)
+        foreach (var hex in hexPositions)
         {
             allNodes.Add(hex, new Node { Position = hex, GCost = float.MaxValue });
         }
@@ -153,7 +152,7 @@ public class pathfinder : MonoBehaviour
 
         foreach (Vector2Int direction in directions)
         {
-            Vector2Int neighborPos = new Vector2Int(hex.x + direction.x, hex.y + direction.y);
+            Vector2Int neighborPos = new Vector2Int(from.x + direction.x, from.y + direction.y);
 
             // Check if the neighbor is within the grid bounds
             if (neighborPos.x >= 0 && neighborPos.x < gridData.MapSize.x &&
@@ -186,8 +185,6 @@ public class pathfinder : MonoBehaviour
             case Biomes.TemperateRainforest:
             case Biomes.BorealForest:
             case Biomes.Woodland:
-            case Biomes.TemperateGrassland:
-            case Biomes.TemerateSeasonalForest:
                 return 1.0f; // Normal traversal cost
 
             case Biomes.SubtropicalDesert:
@@ -216,14 +213,14 @@ public class pathfinder : MonoBehaviour
 
     private void ReconstructPath(Vector2Int current)
     {
-        algo_path.Clear();
+        algoPath.Clear();
         Node currentNode = allNodes[current];
         while (currentNode != null)
         {
-            algo_path.Add(currentNode.Position);
+            algoPath.Add(currentNode.Position);
             currentNode = currentNode.Parent;
         }
-        algo_path.Reverse();
+        algoPath.Reverse();
     }
 
     List<HexTile.HexVisualData> Biome_data_to_hex(List<BiomeData> all_biomes)
@@ -243,16 +240,16 @@ public class pathfinder : MonoBehaviour
         // Re-update the data. (to view changes)
         planet.GenerateData();
         List<BiomeData> biomes = planet.GetAllBiomes();
-        manager.SetVisualData(hex_pos.ToArray(), Biome_data_to_hex(biomes).ToArray());
+        manager.SetVisualData(hexPositions.ToArray(), Biome_data_to_hex(biomes).ToArray());
     }
 
     // Class to visualize the path.
     void _re_paint_path()
     {
         // Set the color to what the user wants the path to have.
-        hexColorData.SetColor(hex_color);
+        hexColorData.SetColor(hexColor);
         // Color the path.
-        SetVisualData(algo_path.ToArray(), hexColorData);
+        SetVisualData(algoPath.ToArray(), hexColorData);
     }
 
     // Overloaded function that calls the path vector to be colored the same color.
@@ -267,11 +264,11 @@ public class pathfinder : MonoBehaviour
     void run_algo()
     {
         // If end not found.
-        if (algo_path.Last() != end_point)
+        if (algoPath.Last() != endPoint)
         {
-            go_left_algo();
+            RunAStar();
             if (log_out_ctr == 0)
-                Debug.Log("Added Hex:" + algo_path.Last().ToString());
+                Debug.Log("Added Hex:" + algoPath.Last().ToString());
         }
         else
         {
