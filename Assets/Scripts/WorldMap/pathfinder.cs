@@ -7,7 +7,7 @@ using UnityEngine;
 using static Assets.Scripts.WorldMap.Biosphere.SurfaceBody;
 using static Assets.Scripts.WorldMap.GridManager;
 
-public class pathfinder : MonoBehaviour
+public class Pathfinder : MonoBehaviour
 {
     // Anthony and Felicity A* Pathfinding Algo
     // Public variables.
