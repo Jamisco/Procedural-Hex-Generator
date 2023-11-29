@@ -19,9 +19,9 @@ public class Pathfinder : MonoBehaviour
     public Vector2Int endPoint;
 
     // A* specific structures
-    private Dictionary<Vector2Int, Node> allNodes = new Dictionary<Vector2Int, Node>();
-    private List<Vector2Int> openSet = new List<Vector2Int>();
-    private HashSet<Vector2Int> closedSet = new HashSet<Vector2Int>();
+    private Dictionary<Vector2Int, Node> allNodes = new Dictionary<Vector2Int, Node>(); // all nodes (hexes) in the grid
+    private List<Vector2Int> openSet = new List<Vector2Int>(); // list of nodes to be evaluated
+    private HashSet<Vector2Int> closedSet = new HashSet<Vector2Int>(); // set of nodes already evaluated
 
     private class Node
     {
@@ -33,13 +33,13 @@ public class Pathfinder : MonoBehaviour
     }
 
     // Private variables.
-    List<Vector2Int> hexPositions = new List<Vector2Int>();
-    HexTile.HexVisualData hexColorData = new HexTile.HexVisualData();
+    List<Vector2Int> hexPositions = new List<Vector2Int>(); // used to store hex positions
+    HexTile.HexVisualData hexColorData = new HexTile.HexVisualData(); // stores hex color data
     List<Vector2Int> algoPath = new List<Vector2Int>();
     private int log_out_ctr = 0;
 
 
-    // Start is called before the first frame update
+    // initialize planet and manager game objects, grid is populated with hexes
     void Start()
     {
         manager = GetComponent<GridManager>();
@@ -67,7 +67,7 @@ public class Pathfinder : MonoBehaviour
         algoPath.Add(startPoint);
     }
 
-    // Update is called once per frame
+    // Update is called once per frame, used to update the visual of the path
     void Update()
     {
         // Log printing counter.
@@ -86,7 +86,9 @@ public class Pathfinder : MonoBehaviour
         _re_paint_path();
         manager.DrawChunkInstanced();
     }
+    
 
+    // init the nodes, adds the starting point to the open set, then evaluates the lowest cost nodes until end point or open set is empty
     private void RunAStar()
     {
         InitializeNodes();
