@@ -3,9 +3,12 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
+using UnityEngine.UI;
 using static Assets.Scripts.WorldMap.Biosphere.SurfaceBody;
 using static Assets.Scripts.WorldMap.GridManager;
+using static UnityEngine.GraphicsBuffer;
 
 public class Pathfinder : MonoBehaviour
 {
@@ -276,5 +279,24 @@ public class Pathfinder : MonoBehaviour
                 Debug.Log("End Found");
         }
     }
+
+
+#if UNITY_EDITOR
+    [CustomEditor(typeof(Pathfinder))]
+    public class PathfindingButtonEditor : Editor
+    {
+        public override void OnInspectorGUI()
+        {
+            DrawDefaultInspector();
+
+            Pathfinder exampleScript = (Pathfinder)target;
+
+            if (GUILayout.Button("Begin Pathfinding"))
+            {
+                Debug.Log("Button Works");
+            }
+        }
+    }
+#endif
 
 }
