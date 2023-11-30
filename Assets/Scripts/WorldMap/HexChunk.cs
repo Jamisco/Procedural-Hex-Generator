@@ -185,8 +185,7 @@ namespace Assets.Scripts.WorldMap
                 ExtractData(biomes.Value);
 
                 // this will fuse all the meshes together. The fuse constructor using multithreading inorder to increase the speed
-                biomeFusedMeshes.Add(biomes.Key,
-                    new FusedMesh(meshes, hashes, offsets, vertTriIndex, totals));
+                biomeFusedMeshes.TryAdd(biomes.Key, new FusedMesh(meshes, hashes, offsets, vertTriIndex, totals));
             }
 
             DrawMesh();

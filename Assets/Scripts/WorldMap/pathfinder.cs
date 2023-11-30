@@ -41,12 +41,18 @@ public class Pathfinder : MonoBehaviour
     List<Vector2Int> algoPath = new List<Vector2Int>();
     private int log_out_ctr = 0;
 
+    // a boolean to check if the user has started the pathfinding algo
+    private bool isPathfindingStarted = false;
+    public void BeginPathfinding()
+    {
+        isPathfindingStarted = true;
+    }
 
     // initialize planet and manager game objects, grid is populated with hexes
     void Start()
     {
         manager = GetComponent<GridManager>();
-
+        gridData = manager.Data;
         // Get the planet and generate it.
         planet = GetComponent<PlanetGenerator>();
         planet.MainPlanet.PlanetSize = gridData.MapSize;
@@ -65,29 +71,30 @@ public class Pathfinder : MonoBehaviour
                 hexPositions.Add(new Vector2Int(x, y));
             }
         }
-
-       
-        algoPath.Add(startPoint);
     }
 
     // Update is called once per frame, used to update the visual of the path
     void Update()
     {
-        // Log printing counter.
-        log_out_ctr++;
-        log_out_ctr = log_out_ctr % (30);
-
-        // Hidden class to re-make the biome.
-        _re_make_biome();
-
-        if (log_out_ctr == 0)
+        if (isPathfindingStarted)
         {
-            RunAStar();
-        }
+            // Log printing counter.
+            log_out_ctr++;
+            log_out_ctr = log_out_ctr % (30);
 
-        // Re-paint the algorithm path currently.
-        _re_paint_path();
-        manager.DrawChunkInstanced();
+            // Hidden class to re-make the biome.
+            _re_make_biome();
+
+            if (log_out_ctr == 0)
+            {
+                RunAStar();
+            }
+
+            // Re-paint the algorithm path currently.
+            _re_paint_path();
+            manager.DrawChunkInstanced();
+        }
+       
     }
     
 
@@ -95,7 +102,7 @@ public class Pathfinder : MonoBehaviour
     private void RunAStar()
     {
         InitializeNodes();
-
+        algoPath.Add(startPoint);
         openSet.Add(startPoint);
         allNodes[startPoint].GCost = 0;
         allNodes[startPoint].HCost = CalculateHeuristic(startPoint, endPoint);
@@ -251,19 +258,45 @@ public class Pathfinder : MonoBehaviour
     // Class to visualize the path.
     void _re_paint_path()
     {
-        // Set the color to what the user wants the path to have.
-        hexColorData.SetColor(hexColor);
-        // Color the path.
-        SetVisualData(algoPath.ToArray(), hexColorData);
+        // Color for the path (purple)
+        HexTile.HexVisualData pathColorData = new HexTile.HexVisualData();
+        pathColorData.SetColor(Color.magenta); // Magenta is a common stand-in for purple
+
+        // Color for the start and end points (yellow)
+        HexTile.HexVisualData startEndColorData = new HexTile.HexVisualData();
+        startEndColorData.SetColor(Color.yellow);
+
+        // Color the start and end points yellow.
+        // Even though these are single points, they are passed in as arrays to use the existing SetVisualData function.
+        SetVisualData(new Vector2Int[] { startPoint }, startEndColorData);
+        SetVisualData(new Vector2Int[] { endPoint }, startEndColorData);
+
+        // Remove start and end points from the path to avoid recoloring them purple.
+        List<Vector2Int> pathWithoutStartEnd = new List<Vector2Int>(algoPath);
+        pathWithoutStartEnd.Remove(startPoint);
+        pathWithoutStartEnd.Remove(endPoint);
+
+        // Color the path purple.
+        if (pathWithoutStartEnd.Count > 0)
+        {
+            SetVisualData(pathWithoutStartEnd.ToArray(), pathColorData);
+        }
+
     }
 
     // Overloaded function that calls the path vector to be colored the same color.
-    public void SetVisualData(Vector2Int[] path, HexTile.HexVisualData color)
+    public void SetVisualData(Vector2Int[] path, HexTile.HexVisualData colorData)
     {
         foreach (Vector2Int hx in path)
         {
-            manager.SetVisualData(hx, color);
+            manager.SetVisualData(hx, colorData);
         }
+    }
+
+    // Overloaded function that colors a single hex tile.
+    public void SetVisualData(Vector2Int hexPosition, HexTile.HexVisualData colorData)
+    {
+        manager.SetVisualData(hexPosition, colorData);
     }
 
     void run_algo()
@@ -296,9 +329,32 @@ public class Pathfinder : MonoBehaviour
             if (GUILayout.Button("Begin Pathfinding"))
             {
                 Debug.Log("Button Works");
+                exampleScript.BeginPathfinding();
             }
         }
     }
 #endif
 
+    // this method to set the start point from a UI input field
+    public void SetStartPointFromInput(string input)
+    {
+        startPoint = ParseVector2Int(input);
+    }
+
+    //  this method to set the end point from a UI input field
+    public void SetEndPointFromInput(string input)
+    {
+        endPoint = ParseVector2Int(input);
+    }
+
+    private Vector2Int ParseVector2Int(string input)
+    {
+        string[] parts = input.Split(',');
+        if (parts.Length == 2)
+        {
+            return new Vector2Int(int.Parse(parts[0].Trim()), int.Parse(parts[1].Trim()));
+        }
+        return Vector2Int.zero; 
+    }
 }
+
