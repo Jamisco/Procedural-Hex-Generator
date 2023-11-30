@@ -1233,6 +1233,123 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &674790979
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 674790983}
+  - component: {fileID: 674790982}
+  - component: {fileID: 674790981}
+  - component: {fileID: 674790980}
+  m_Layer: 0
+  m_Name: pathfinder_FA
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &674790980
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 674790979}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b389b3b5d7bd7e4390e8910edd548d7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  biomeDataStorage: {fileID: 11400000, guid: 6f195cc767060ae42af839ec3c479579, type: 2}
+  MainPlanet:
+    PlanetSize: {x: 0, y: 0}
+    InitialSunRayFocus: {x: 0, y: 0}
+    SunlightVector: {x: 0, y: 0}
+    SunlightIntensity: 0
+    SunlightRadius: 0
+    DaysInYear: 0
+    currentDay: 0
+  CircularSun: 0
+  VerticalSun: 0
+  planetFractal: 1
+  PrintArrays: 0
+  RandomBiomeColor: 0
+  LandSeed: 1337
+  LandFrequemcy: 0.01
+  LFractal: 0
+  LNoise: 3
+  landMultiplier: 0.75
+  landLevelScale: 0
+  landOffset: {x: 0, y: 0}
+  OceanSeed: 1337
+  OceanFrequemcy: 0.01
+  OFractal: 0
+  ONoise: 3
+  marineMultiplier: 0.4
+  marineLevelScale: 0
+  marineLevel: 0
+  oceanOffset: {x: 0, y: 0}
+  minTemperature: 0
+  TemperatureMultiplier: 1
+  precipitationScale: 0
+  minPrecipitation: 0
+  rainMultiplier: 0.51
+  pOffset: {x: 0, y: 0}
+  weather: {fileID: 2800000, guid: 34bc1c82251d51d47b35c7d1c56b6486, type: 3}
+  multiplier: 1
+--- !u!114 &674790981
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 674790979}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e3aed3303379304582644023e611b2e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &674790982
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 674790979}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ecdb900fb58f38648be32f8365df226a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  manager: {fileID: 674790981}
+  planet: {fileID: 674790980}
+  gridData:
+    MaxHexPerChunk: 1000
+    MapSize: {x: 100, y: 100}
+    HexSettings: {fileID: 11400000, guid: c966756f1912d5a45a766bb5fef9cf23, type: 2}
+    MainMaterial: {fileID: 2100000, guid: 1ce1c2e14903de741ae3026f3330e7bb, type: 2}
+    InstanceMaterial: {fileID: 2100000, guid: 876cd32450d0f1a48835980ee51786b2, type: 2}
+  startPoint: {x: 4, y: 4}
+  endPoint: {x: 0, y: 0}
+--- !u!4 &674790983
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 674790979}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -3.7597938, y: -500.76697, z: 270.59247}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &901666213
 GameObject:
   m_ObjectHideFlags: 0
@@ -1466,7 +1583,7 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1453448161}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: Pathfinder, Assembly-CSharp
         m_MethodName: SetEndPoint
         m_Mode: 5
@@ -1478,7 +1595,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-      - m_Target: {fileID: 1453448161}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: Pathfinder, Assembly-CSharp
         m_MethodName: SetEndPointFromInput
         m_Mode: 5
@@ -1917,7 +2034,7 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1453448161}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: Pathfinder, Assembly-CSharp
         m_MethodName: SetStartPoint
         m_Mode: 5
@@ -1929,7 +2046,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-      - m_Target: {fileID: 1453448161}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: Pathfinder, Assembly-CSharp
         m_MethodName: SetStartPointFromInput
         m_Mode: 5
@@ -2501,14 +2618,13 @@ GameObject:
   - component: {fileID: 1453448158}
   - component: {fileID: 1453448157}
   - component: {fileID: 1453448160}
-  - component: {fileID: 1453448161}
   m_Layer: 0
   m_Name: GridSpawner
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1453448157
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2606,29 +2722,6 @@ MonoBehaviour:
   pOffset: {x: 0, y: 0}
   weather: {fileID: 2800000, guid: 34bc1c82251d51d47b35c7d1c56b6486, type: 3}
   multiplier: 1
---- !u!114 &1453448161
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1453448156}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ecdb900fb58f38648be32f8365df226a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  manager: {fileID: 0}
-  planet: {fileID: 0}
-  gridData:
-    MaxHexPerChunk: 0
-    MapSize: {x: 0, y: 0}
-    HexSettings: {fileID: 0}
-    MainMaterial: {fileID: 0}
-    InstanceMaterial: {fileID: 0}
-  hexColor: {r: 0, g: 0, b: 0, a: 0}
-  startPoint: {x: 0, y: 0}
-  endPoint: {x: 0, y: 0}
 --- !u!1 &1587766257
 GameObject:
   m_ObjectHideFlags: 0
@@ -3320,3 +3413,4 @@ SceneRoots:
   - {fileID: 1757105268}
   - {fileID: 1069101480}
   - {fileID: 944234985}
+  - {fileID: 674790983}

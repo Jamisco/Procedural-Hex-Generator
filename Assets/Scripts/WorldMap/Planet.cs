@@ -43,6 +43,10 @@ namespace Assets.Scripts.WorldMap
         {
             get
             {
+                if (DaysInYear == 0)
+                {
+                    DaysInYear = 10;
+                }
                 int day = currentDay % DaysInYear;
 
                 int xSpeed = Mathf.CeilToInt( (float)PlanetSize.x / DaysInYear);

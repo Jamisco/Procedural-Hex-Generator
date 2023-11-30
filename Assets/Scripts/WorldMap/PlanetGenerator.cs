@@ -542,16 +542,16 @@ namespace Assets.Scripts.WorldMap
 
             BiomeData data = MainPlanet.GetBiomeData(gridValues);
 
-            if (x == 50 && y == 50)
-            {
-                float intensity = MainPlanet.GetIntensity(x, y);
+            //if (x == 50 && y == 50)
+            //{
+            //    float intensity = MainPlanet.GetIntensity(x, y);
 
-                //data.SetBiomeColor(Color.Lerp(data.HexColor, Color.red, intensity));
+            //    //data.SetBiomeColor(Color.Lerp(data.HexColor, Color.red, intensity));
 
-                Texture2D snowMask = GenerateRandomMask(weather.height, weather.width, intensity);
+            //    // Texture2D snowMask = GenerateRandomMask(weather.height, weather.width, intensity);
 
-                data.SetWeatherTexture(snowMask);
-            }
+            //    data.SetWeatherTexture(snowMask);
+            //}
 
             return data;
         }

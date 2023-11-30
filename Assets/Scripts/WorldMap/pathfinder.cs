@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using static Assets.Scripts.WorldMap.Biosphere.SurfaceBody;
 using static Assets.Scripts.WorldMap.GridManager;
+using static Assets.Scripts.WorldMap.HexTile;
 using static UnityEngine.GraphicsBuffer;
 
 public class Pathfinder : MonoBehaviour
@@ -17,7 +18,6 @@ public class Pathfinder : MonoBehaviour
     public GridManager manager;
     public PlanetGenerator planet;
     public GridData gridData;
-    public Color hexColor;
     public Vector2Int startPoint;
     public Vector2Int endPoint;
 
@@ -52,7 +52,7 @@ public class Pathfinder : MonoBehaviour
     void Start()
     {
         manager = GetComponent<GridManager>();
-        gridData = manager.Data;
+        manager.SetGridData(gridData);
         // Get the planet and generate it.
         planet = GetComponent<PlanetGenerator>();
         planet.MainPlanet.PlanetSize = gridData.MapSize;
@@ -71,6 +71,7 @@ public class Pathfinder : MonoBehaviour
                 hexPositions.Add(new Vector2Int(x, y));
             }
         }
+        _re_paint_path();
     }
 
     // Update is called once per frame, used to update the visual of the path
@@ -258,29 +259,13 @@ public class Pathfinder : MonoBehaviour
     // Class to visualize the path.
     void _re_paint_path()
     {
-        // Color for the path (purple)
-        HexTile.HexVisualData pathColorData = new HexTile.HexVisualData();
-        pathColorData.SetColor(Color.magenta); // Magenta is a common stand-in for purple
+ 
 
-        // Color for the start and end points (yellow)
-        HexTile.HexVisualData startEndColorData = new HexTile.HexVisualData();
-        startEndColorData.SetColor(Color.yellow);
+        HexVisualData hexData;
+        manager.GetVisualData(startPoint, out hexData);
+        hexData.SetColor(Color.black);
+        manager.UpdateVisualData(startPoint);
 
-        // Color the start and end points yellow.
-        // Even though these are single points, they are passed in as arrays to use the existing SetVisualData function.
-        SetVisualData(new Vector2Int[] { startPoint }, startEndColorData);
-        SetVisualData(new Vector2Int[] { endPoint }, startEndColorData);
-
-        // Remove start and end points from the path to avoid recoloring them purple.
-        List<Vector2Int> pathWithoutStartEnd = new List<Vector2Int>(algoPath);
-        pathWithoutStartEnd.Remove(startPoint);
-        pathWithoutStartEnd.Remove(endPoint);
-
-        // Color the path purple.
-        if (pathWithoutStartEnd.Count > 0)
-        {
-            SetVisualData(pathWithoutStartEnd.ToArray(), pathColorData);
-        }
 
     }
 
