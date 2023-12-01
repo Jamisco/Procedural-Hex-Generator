@@ -208,7 +208,7 @@ public class GridSpawner : MonoBehaviour
             // hex.Highlight();
 
 
-            hex.ChangeColor(Color.black);
+            hex.SetColor(Color.black);
         }
     }
     public void UnHighlightHex(HexData hex)
@@ -226,7 +226,7 @@ public class GridSpawner : MonoBehaviour
 
             Color ogColor = Color.red;
 
-            hex.ChangeColor(ogColor);
+            hex.SetColor(ogColor);
         }
     }
 

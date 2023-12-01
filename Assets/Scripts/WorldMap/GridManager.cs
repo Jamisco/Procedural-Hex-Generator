@@ -630,7 +630,6 @@ namespace Assets.Scripts.WorldMap
                 this.chunk = chunk;
                 this.hex = hex;
             }
-
             public void UpdateVisualData()
             {
                 chunk.UpdateVisualData(hex);
@@ -672,12 +671,9 @@ namespace Assets.Scripts.WorldMap
                 }
             }
 
-            public void ChangeColor(Color color)
+            public void SetColor(Color color)
             {
-                if ((!IsNullOrEmpty()))
-                {
-                    chunk.ChangeColor(hex, color);
-                }
+                chunk.SetColor(hex, color);
             }
             public void ResetData()
             {

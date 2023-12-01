@@ -432,13 +432,17 @@ namespace Assets.Scripts.WorldMap
             AddVisualData(hex);
         }
 
-        public void ChangeColor(HexTile hex, Color newColor)
+        public void SetColor(HexTile hex, Color newColor)
         {
             // first we remove the hex mesh
             RemoveVisualData(hex);
 
             // we then change its visual data
-            hex.VisualData.SetColor(newColor);
+            HexVisualData data = hex.VisualData;
+
+            data.SetColor(newColor);
+
+            hex.VisualData = data;
 
             // then we add it back to the fused mesh
             AddVisualData(hex);
