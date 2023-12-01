@@ -1273,6 +1273,10 @@ MonoBehaviour:
     SunlightRadius: 0
     DaysInYear: 0
     currentDay: 0
+    TerrestrialBody:
+      BiomeOrder: 000000000100000002000000030000000400000005000000060000000700000008000000
+    MarineBody:
+      BiomeOrder: 000000000100000002000000030000000400000005000000060000000700000008000000
   CircularSun: 0
   VerticalSun: 0
   planetFractal: 1
@@ -1282,22 +1286,22 @@ MonoBehaviour:
   LandFrequemcy: 0.01
   LFractal: 0
   LNoise: 3
-  landMultiplier: 0.75
+  landMultiplier: 1.05
   landLevelScale: 0
   landOffset: {x: 0, y: 0}
   OceanSeed: 1337
   OceanFrequemcy: 0.01
   OFractal: 0
   ONoise: 3
-  marineMultiplier: 0.4
+  marineMultiplier: 0.15
   marineLevelScale: 0
   marineLevel: 0
   oceanOffset: {x: 0, y: 0}
   minTemperature: 0
-  TemperatureMultiplier: 1
+  TemperatureMultiplier: 0.81
   precipitationScale: 0
   minPrecipitation: 0
-  rainMultiplier: 0.51
+  rainMultiplier: 0.39
   pOffset: {x: 0, y: 0}
   weather: {fileID: 2800000, guid: 34bc1c82251d51d47b35c7d1c56b6486, type: 3}
   multiplier: 1
@@ -1329,12 +1333,13 @@ MonoBehaviour:
   planet: {fileID: 674790980}
   gridData:
     MaxHexPerChunk: 1000
-    MapSize: {x: 100, y: 100}
+    GridSize: {x: 100, y: 100}
     HexSettings: {fileID: 11400000, guid: c966756f1912d5a45a766bb5fef9cf23, type: 2}
     MainMaterial: {fileID: 2100000, guid: 1ce1c2e14903de741ae3026f3330e7bb, type: 2}
     InstanceMaterial: {fileID: 2100000, guid: 876cd32450d0f1a48835980ee51786b2, type: 2}
-  startPoint: {x: 4, y: 4}
-  endPoint: {x: 0, y: 0}
+    Sprites_Default: {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  startPoint: {x: 10, y: 10}
+  endPoint: {x: 20, y: 20}
 --- !u!4 &674790983
 Transform:
   m_ObjectHideFlags: 0
@@ -1344,7 +1349,7 @@ Transform:
   m_GameObject: {fileID: 674790979}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -3.7597938, y: -500.76697, z: 270.59247}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1502,7 +1507,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &944234982
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1953,7 +1958,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1069101477
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3496,3 +3501,16 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2034374443}
   m_CullTransparentMesh: 1
+--- !u!1660057539 &9223372036854775807
+SceneRoots:
+  m_ObjectHideFlags: 0
+  m_Roots:
+  - {fileID: 484962636}
+  - {fileID: 519420032}
+  - {fileID: 619394802}
+  - {fileID: 674790983}
+  - {fileID: 944234985}
+  - {fileID: 1069101480}
+  - {fileID: 1453448159}
+  - {fileID: 1757105268}
+  - {fileID: 1783905911}

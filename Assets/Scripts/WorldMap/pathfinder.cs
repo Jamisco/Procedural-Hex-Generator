@@ -46,6 +46,8 @@ public class Pathfinder : MonoBehaviour
     public void BeginPathfinding()
     {
         isPathfindingStarted = true;
+        RunAStar();  // Start the pathfinding process
+        _re_paint_path();  // Highlight the path after pathfinding is done
     }
 
     // initialize planet and manager game objects, grid is populated with hexes
@@ -53,6 +55,7 @@ public class Pathfinder : MonoBehaviour
     {
         manager = GetComponent<GridManager>();
         // Get the planet and generate it.
+        manager.SetGridData(gridData);
         planet = GetComponent<PlanetGenerator>();
         planet.MainPlanet.PlanetSize = gridData.GridSize;
         planet.GenerateData();
@@ -70,8 +73,6 @@ public class Pathfinder : MonoBehaviour
                 hexPositions.Add(new Vector2Int(x, y));
             }
         }
-        
-        _re_paint_path();
     }
 
     // Update is called once per frame, used to update the visual of the path
@@ -262,14 +263,36 @@ public class Pathfinder : MonoBehaviour
 
         // The hexdata struct contains the value of the hex, and the chunk it is assigned to.
         // This is because each time you modify the visual data of a hex, the ENTIRE chunk must be redraw, since we group all hexes of thesame visual data into one draw call
-        HexData startData = manager.GetHexData(startPoint);
-        HexData endData = manager.GetHexData(endPoint);
+        if (!isPathfindingStarted) return; // Only highlight if pathfinding has started
+        else
+        {
+            // Highlight start and end points
+            //HexData startData = manager.GetHexData(startPoint);
+            //HexData endData = manager.GetHexData(endPoint);
+            //startData.Highlight();
+            //endData.Highlight();
+            HexVisualData hexData = manager.GetVisualData(startPoint);
+            hexData.SetVisualOption(HexVisualData.HexVisualOption.Color);
+            hexData.SetColor(Color.black);
+            manager.SetVisualData(startPoint, hexData);
 
-        // Set the color of the start point to black.
+            hexData = manager.GetVisualData(endPoint);
+            hexData.SetVisualOption(HexVisualData.HexVisualOption.Color);
+            hexData.SetColor(Color.black);
+            manager.SetVisualData(endPoint, hexData);
 
-        // you can then modify the visual data of the hex using methods provided by the HexData struct.
-        startData.Highlight();
-        endData.Highlight();
+            //// Highlight the path
+            foreach (Vector2Int pathNode in algoPath)
+            {
+                HexVisualData pathNodeData = manager.GetVisualData(pathNode);
+                pathNodeData.SetVisualOption(HexVisualData.HexVisualOption.Color);
+                pathNodeData.SetColor(Color.magenta);
+                manager.SetVisualData(pathNode, hexData);
+            }
+
+            manager.DrawChunkInstanced(); // Update the grid visuals
+        }
+     
 
         // be advised that when changing the color or the material, you MUST set the hex visual option to "BaseTextures" or "Color" respectively so that the correct are visible.
         // so if you change the color, you must set the visual option to "Color" and if you change the texture, you must set the visual option to "BaseTextures", if you do not do this, changing the color will have no effect if the visual option is set to "BaseTextures"
