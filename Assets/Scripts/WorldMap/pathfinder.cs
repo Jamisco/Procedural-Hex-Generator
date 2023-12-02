@@ -80,19 +80,7 @@ public class Pathfinder : MonoBehaviour
     {
         if (isPathfindingStarted)
         {
-            // Log printing counter.
-            log_out_ctr++;
-            log_out_ctr = log_out_ctr % (30);
-
-            // Hidden class to re-make the biome.
-            _re_make_biome();
-
-            if (log_out_ctr == 0)
-            {
-                RunAStar();
-            }
-
-            // Re-paint the algorithm path currently.
+           // Re-paint the algorithm path currently.
             _re_paint_path();
             manager.DrawChunkInstanced();
         }
@@ -260,39 +248,31 @@ public class Pathfinder : MonoBehaviour
     // Class to visualize the path.
     void _re_paint_path()
     {
-
-        // The hexdata struct contains the value of the hex, and the chunk it is assigned to.
-        // This is because each time you modify the visual data of a hex, the ENTIRE chunk must be redraw, since we group all hexes of thesame visual data into one draw call
         if (!isPathfindingStarted) return; // Only highlight if pathfinding has started
-        else
+
+        // Highlight start point
+        HexVisualData startHexData = manager.GetVisualData(startPoint);
+        startHexData.SetVisualOption(HexVisualData.HexVisualOption.Color);
+        startHexData.SetColor(Color.black);
+        manager.SetVisualData(startPoint, startHexData);
+
+        // Highlight end point
+        HexVisualData endHexData = manager.GetVisualData(endPoint);
+        endHexData.SetVisualOption(HexVisualData.HexVisualOption.Color);
+        endHexData.SetColor(Color.black);
+        manager.SetVisualData(endPoint, endHexData);
+
+        // Highlight the path
+        foreach (Vector2Int pathNode in algoPath)
         {
-            // Highlight start and end points
-            //HexData startData = manager.GetHexData(startPoint);
-            //HexData endData = manager.GetHexData(endPoint);
-            //startData.Highlight();
-            //endData.Highlight();
-            HexVisualData hexData = manager.GetVisualData(startPoint);
-            hexData.SetVisualOption(HexVisualData.HexVisualOption.Color);
-            hexData.SetColor(Color.black);
-            manager.SetVisualData(startPoint, hexData);
-
-            hexData = manager.GetVisualData(endPoint);
-            hexData.SetVisualOption(HexVisualData.HexVisualOption.Color);
-            hexData.SetColor(Color.black);
-            manager.SetVisualData(endPoint, hexData);
-
-            //// Highlight the path
-            foreach (Vector2Int pathNode in algoPath)
-            {
-                HexVisualData pathNodeData = manager.GetVisualData(pathNode);
-                pathNodeData.SetVisualOption(HexVisualData.HexVisualOption.Color);
-                pathNodeData.SetColor(Color.magenta);
-                manager.SetVisualData(pathNode, hexData);
-            }
-
-            manager.DrawChunkInstanced(); // Update the grid visuals
+            HexVisualData pathNodeData = manager.GetVisualData(pathNode);
+            pathNodeData.SetVisualOption(HexVisualData.HexVisualOption.Color);
+            pathNodeData.SetColor(Color.magenta);
+            manager.SetVisualData(pathNode, pathNodeData);
         }
-     
+
+        manager.DrawChunkInstanced(); // Update the grid visuals
+
 
         // be advised that when changing the color or the material, you MUST set the hex visual option to "BaseTextures" or "Color" respectively so that the correct are visible.
         // so if you change the color, you must set the visual option to "Color" and if you change the texture, you must set the visual option to "BaseTextures", if you do not do this, changing the color will have no effect if the visual option is set to "BaseTextures"
