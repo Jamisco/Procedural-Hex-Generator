@@ -1282,26 +1282,26 @@ MonoBehaviour:
   planetFractal: 1
   PrintArrays: 0
   RandomBiomeColor: 0
-  LandSeed: 1337
+  LandSeed: 1592
   LandFrequemcy: 0.01
-  LFractal: 0
+  LFractal: 3
   LNoise: 3
-  landMultiplier: 1.05
-  landLevelScale: 0
+  landMultiplier: 1.66
+  landLevelScale: 1.31
   landOffset: {x: 0, y: 0}
   OceanSeed: 1337
   OceanFrequemcy: 0.01
   OFractal: 0
   ONoise: 3
-  marineMultiplier: 0.15
+  marineMultiplier: 1
   marineLevelScale: 0
   marineLevel: 0
   oceanOffset: {x: 0, y: 0}
   minTemperature: 0
-  TemperatureMultiplier: 0.81
-  precipitationScale: 0
+  TemperatureMultiplier: 1
+  precipitationScale: 1
   minPrecipitation: 0
-  rainMultiplier: 0.39
+  rainMultiplier: 1
   pOffset: {x: 0, y: 0}
   weather: {fileID: 2800000, guid: 34bc1c82251d51d47b35c7d1c56b6486, type: 3}
   multiplier: 1
