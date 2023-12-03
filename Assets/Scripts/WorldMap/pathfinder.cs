@@ -90,42 +90,61 @@ public class Pathfinder : MonoBehaviour
 
     // init the nodes, adds the starting point to the open set, then evaluates the lowest cost nodes until end point or open set is empty
     private void RunAStar()
+{
+    // Initialize all nodes with maximum float value for GCost
+    InitializeNodes();
+
+    // Add the start point to the open set
+    algoPath.Add(startPoint);
+    openSet.Add(startPoint);
+    
+    // The cost from start to start is zero
+    allNodes[startPoint].GCost = 0;
+    
+    // Calculate the heuristic cost from start to end
+    allNodes[startPoint].HCost = CalculateHeuristic(startPoint, endPoint);
+
+    // While there are nodes to evaluate
+    while (openSet.Count > 0)
     {
-        InitializeNodes();
-        algoPath.Add(startPoint);
-        openSet.Add(startPoint);
-        allNodes[startPoint].GCost = 0;
-        allNodes[startPoint].HCost = CalculateHeuristic(startPoint, endPoint);
-
-        while (openSet.Count > 0)
+        // Find the node with the lowest F cost
+        Vector2Int current = GetLowestFCostNode(openSet);
+        
+        // If the current node is the end point, reconstruct the path
+        if (current == endPoint)
         {
-            Vector2Int current = GetLowestFCostNode(openSet);
-            if (current == endPoint)
+            ReconstructPath(current);
+            return; // Exit the function as the path has been found
+        }
+
+        // Move the current node from open to closed set
+        openSet.Remove(current);
+        closedSet.Add(current);
+
+        // Evaluate all neighbors
+        foreach (var neighbor in GetNeighbors(current))
+        {
+            // Skip if the neighbor is in the closed set
+            if (closedSet.Contains(neighbor)) continue;
+
+            // Calculate the G cost from start to the neighbor through current
+            float tentativeGCost = allNodes[current].GCost + GetTraversalCost(current, neighbor);
+            
+            // If the new path to neighbor is shorter, or neighbor is not in open set
+            if (tentativeGCost < allNodes[neighbor].GCost || !openSet.Contains(neighbor))
             {
-                ReconstructPath(current);
-                break;
-            }
+                // Update the neighbor node's costs and parent
+                allNodes[neighbor].Parent = allNodes[current];
+                allNodes[neighbor].GCost = tentativeGCost;
+                allNodes[neighbor].HCost = CalculateHeuristic(neighbor, endPoint);
 
-            openSet.Remove(current);
-            closedSet.Add(current);
-
-            foreach (var neighbor in GetNeighbors(current))
-            {
-                if (closedSet.Contains(neighbor)) continue;
-
-                float tentativeGCost = allNodes[current].GCost + GetTraversalCost(current, neighbor);
-                if (tentativeGCost < allNodes[neighbor].GCost)
-                {
-                    allNodes[neighbor].Parent = allNodes[current];
-                    allNodes[neighbor].GCost = tentativeGCost;
-                    allNodes[neighbor].HCost = CalculateHeuristic(neighbor, endPoint);
-
-                    if (!openSet.Contains(neighbor))
-                        openSet.Add(neighbor);
-                }
+                // Add the neighbor to the open set if it's not there
+                if (!openSet.Contains(neighbor))
+                    openSet.Add(neighbor);
             }
         }
     }
+}
 
     private void InitializeNodes()
     {
@@ -215,13 +234,20 @@ public class Pathfinder : MonoBehaviour
 
     private void ReconstructPath(Vector2Int current)
     {
+        // Clear any existing path
         algoPath.Clear();
+    
+        // Start from the end node
         Node currentNode = allNodes[current];
+    
+        // Trace back from end node to start node
         while (currentNode != null)
         {
             algoPath.Add(currentNode.Position);
-            currentNode = currentNode.Parent;
+            currentNode = currentNode.Parent; // Move to the parent node
         }
+    
+        // Reverse the path to get it from start to end
         algoPath.Reverse();
     }
 
@@ -247,47 +273,35 @@ public class Pathfinder : MonoBehaviour
 
     // Class to visualize the path.
     void _re_paint_path()
+{
+    if (!isPathfindingStarted) return; // Only highlight if pathfinding has started
+
+    // Highlight start point
+    HexVisualData startHexData = manager.GetVisualData(startPoint);
+    startHexData.SetVisualOption(HexVisualData.HexVisualOption.Color);
+    startHexData.SetColor(Color.magenta); // Start point color
+    manager.SetVisualData(startPoint, startHexData);
+
+    // Highlight end point
+    HexVisualData endHexData = manager.GetVisualData(endPoint);
+    endHexData.SetVisualOption(HexVisualData.HexVisualOption.Color);
+    endHexData.SetColor(Color.magenta); // End point color
+    manager.SetVisualData(endPoint, endHexData);
+
+    // Highlight the path
+    foreach (Vector2Int pathNode in algoPath)
     {
-        if (!isPathfindingStarted) return; // Only highlight if pathfinding has started
-
-        // Highlight start point
-        HexVisualData startHexData = manager.GetVisualData(startPoint);
-        startHexData.SetVisualOption(HexVisualData.HexVisualOption.Color);
-        startHexData.SetColor(Color.black);
-        manager.SetVisualData(startPoint, startHexData);
-
-        // Highlight end point
-        HexVisualData endHexData = manager.GetVisualData(endPoint);
-        endHexData.SetVisualOption(HexVisualData.HexVisualOption.Color);
-        endHexData.SetColor(Color.black);
-        manager.SetVisualData(endPoint, endHexData);
-
-        // Highlight the path
-        foreach (Vector2Int pathNode in algoPath)
+        if(pathNode != startPoint && pathNode != endPoint) // Avoid recoloring the start/end points
         {
             HexVisualData pathNodeData = manager.GetVisualData(pathNode);
             pathNodeData.SetVisualOption(HexVisualData.HexVisualOption.Color);
-            pathNodeData.SetColor(Color.magenta);
+            pathNodeData.SetColor(Color.cyan); // Path color
             manager.SetVisualData(pathNode, pathNodeData);
         }
-
-        manager.DrawChunkInstanced(); // Update the grid visuals
-
-
-        // be advised that when changing the color or the material, you MUST set the hex visual option to "BaseTextures" or "Color" respectively so that the correct are visible.
-        // so if you change the color, you must set the visual option to "Color" and if you change the texture, you must set the visual option to "BaseTextures", if you do not do this, changing the color will have no effect if the visual option is set to "BaseTextures"
-
-        // you can change the visualdata by using the SetVisualData method of the GridManager class.
-        // something like this
-
-        //HexVisualData hexData = manager.GetVisualData(startPoint);
-
-        //hexData.SetVisualOption(HexVisualData.HexVisualOption.Color);
-
-        //manager.SetVisualData(startPoint, hexData);
-
     }
 
+    manager.DrawChunkInstanced(); // This line will trigger the grid manager to update the visuals on the screen
+}
     void run_algo()
     {
         // If end not found.
