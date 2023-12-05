@@ -84,7 +84,7 @@ public class Pathfinder : MonoBehaviour
             _re_paint_path();
             manager.DrawChunkInstanced();
         }
-       
+
     }
 
 
@@ -115,21 +115,38 @@ public class Pathfinder : MonoBehaviour
             openSet.Remove(current);
             closedSet.Add(current);
 
+            float lowestHCost = float.MaxValue;
             // Evaluate the neighbors of the current node
+            foreach (var neighbor in GetNeighbors(current))
+            {
+                GetTraversalCost(current, neighbor);
+                // If the neighbor is in the closed set, skip it
+                if (closedSet.Contains(neighbor)) continue;
+
+
+
+                // Calculate the G Cost and the H Cost of the neighbor
+                float tentativeHCost = CalculateHeuristic(neighbor, endPoint);
+
+                // If this neighbor can be reached with a lower G Cost or is not in the open set
+                if (tentativeHCost < lowestHCost)
+                  lowestHCost = tentativeHCost;
+            }
+
             foreach (var neighbor in GetNeighbors(current))
             {
                 // If the neighbor is in the closed set, skip it
                 if (closedSet.Contains(neighbor)) continue;
 
-                // Calculate the G Cost and the H Cost of the neighbor
-                float tentativeGCost = allNodes[current].GCost + GetTraversalCost(current, neighbor);
+                // Calculate HCost
+                float tentativeHCost = CalculateHeuristic(neighbor, endPoint);
 
                 // If this neighbor can be reached with a lower G Cost or is not in the open set
-                if (tentativeGCost < allNodes[neighbor].GCost || !openSet.Contains(neighbor))
+                if (tentativeHCost == lowestHCost)
                 {
                     // Update the neighbor with the new lower cost and set its parent
                     allNodes[neighbor].Parent = allNodes[current];
-                    allNodes[neighbor].GCost = tentativeGCost;
+                    allNodes[neighbor].GCost = allNodes[current].GCost;
                     allNodes[neighbor].HCost = CalculateHeuristic(neighbor, endPoint);
 
                     // If the neighbor was not in the open set, add it
@@ -151,9 +168,14 @@ public class Pathfinder : MonoBehaviour
     }
 
     private float CalculateHeuristic(Vector2Int from, Vector2Int to)
-    {
-        return Mathf.Abs(from.x - to.x) + Mathf.Abs(from.y - to.y);
-    }
+   {
+       // Calculate the difference in x and y coordinates
+       int deltaX = from.x - to.x;
+       int deltaY = from.y - to.y;
+
+       // Use the Pythagorean theorem to calculate the Euclidean distance
+       return Mathf.Sqrt((deltaX * deltaX) + (deltaY * deltaY));
+   }
 
     private List<Vector2Int> GetNeighbors(Vector2Int from)
     {
@@ -232,17 +254,17 @@ public class Pathfinder : MonoBehaviour
     {
         // Clear any existing path
         algoPath.Clear();
-    
+
         // Start from the end node
         Node currentNode = allNodes[current];
-    
+
         // Trace back from end node to start node
         while (currentNode != null)
         {
             algoPath.Add(currentNode.Position);
             currentNode = currentNode.Parent; // Move to the parent node
         }
-    
+
         // Reverse the path to get it from start to end
         algoPath.Reverse();
     }
@@ -352,7 +374,6 @@ public class Pathfinder : MonoBehaviour
         {
             return new Vector2Int(int.Parse(parts[0].Trim()), int.Parse(parts[1].Trim()));
         }
-        return Vector2Int.zero; 
+        return Vector2Int.zero;
     }
 }
-
