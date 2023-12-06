@@ -84,48 +84,79 @@ public class Pathfinder : MonoBehaviour
             _re_paint_path();
             manager.DrawChunkInstanced();
         }
-       
+
     }
-    
+
 
     // init the nodes, adds the starting point to the open set, then evaluates the lowest cost nodes until end point or open set is empty
     private void RunAStar()
     {
+        // Initialize all nodes with infinite cost
         InitializeNodes();
-        algoPath.Add(startPoint);
+
+        // Set the starting point with a G Cost of 0 and calculate its H Cost
         openSet.Add(startPoint);
         allNodes[startPoint].GCost = 0;
         allNodes[startPoint].HCost = CalculateHeuristic(startPoint, endPoint);
 
         while (openSet.Count > 0)
         {
+            // Get the node with the lowest F Cost
             Vector2Int current = GetLowestFCostNode(openSet);
+
+            // If we've reached the end, reconstruct the path and finish
             if (current == endPoint)
             {
                 ReconstructPath(current);
-                break;
+                return; // Exit the function as the path has been found
             }
 
+            // Move the current node from the open set to the closed set
             openSet.Remove(current);
             closedSet.Add(current);
 
+            float lowestHCost = float.MaxValue;
+            // Evaluate the neighbors of the current node
             foreach (var neighbor in GetNeighbors(current))
             {
+                GetTraversalCost(current, neighbor);
+                // If the neighbor is in the closed set, skip it
                 if (closedSet.Contains(neighbor)) continue;
 
-                float tentativeGCost = allNodes[current].GCost + GetTraversalCost(current, neighbor);
-                if (tentativeGCost < allNodes[neighbor].GCost)
+
+
+                // Calculate the G Cost and the H Cost of the neighbor
+                float tentativeHCost = CalculateHeuristic(neighbor, endPoint);
+
+                // If this neighbor can be reached with a lower G Cost or is not in the open set
+                if (tentativeHCost < lowestHCost)
+                  lowestHCost = tentativeHCost;
+            }
+
+            foreach (var neighbor in GetNeighbors(current))
+            {
+                // If the neighbor is in the closed set, skip it
+                if (closedSet.Contains(neighbor)) continue;
+
+                // Calculate HCost
+                float tentativeHCost = CalculateHeuristic(neighbor, endPoint);
+
+                // If this neighbor can be reached with a lower G Cost or is not in the open set
+                if (tentativeHCost == lowestHCost)
                 {
+                    // Update the neighbor with the new lower cost and set its parent
                     allNodes[neighbor].Parent = allNodes[current];
-                    allNodes[neighbor].GCost = tentativeGCost;
+                    allNodes[neighbor].GCost = allNodes[current].GCost;
                     allNodes[neighbor].HCost = CalculateHeuristic(neighbor, endPoint);
 
+                    // If the neighbor was not in the open set, add it
                     if (!openSet.Contains(neighbor))
                         openSet.Add(neighbor);
                 }
             }
         }
-    }
+        // If the open set is empty and the end was not reached, there is no path
+    }//
 
     private void InitializeNodes()
     {
@@ -137,9 +168,14 @@ public class Pathfinder : MonoBehaviour
     }
 
     private float CalculateHeuristic(Vector2Int from, Vector2Int to)
-    {
-        return Mathf.Abs(from.x - to.x) + Mathf.Abs(from.y - to.y);
-    }
+   {
+       // Calculate the difference in x and y coordinates
+       int deltaX = from.x - to.x;
+       int deltaY = from.y - to.y;
+
+       // Use the Pythagorean theorem to calculate the Euclidean distance
+       return Mathf.Sqrt((deltaX * deltaX) + (deltaY * deltaY));
+   }
 
     private List<Vector2Int> GetNeighbors(Vector2Int from)
     {
@@ -202,7 +238,8 @@ public class Pathfinder : MonoBehaviour
         }
     }
 
-    private Vector2Int GetLowestFCostNode(List<Vector2Int> openSet)
+    // After evaluating neighbors, find the next current node with the lowest F Cost
+    Vector2Int GetLowestFCostNode(List<Vector2Int> openSet)
     {
         Vector2Int lowest = openSet[0];
         for (int i = 1; i < openSet.Count; i++)
@@ -215,16 +252,22 @@ public class Pathfinder : MonoBehaviour
 
     private void ReconstructPath(Vector2Int current)
     {
+        // Clear any existing path
         algoPath.Clear();
+
+        // Start from the end node
         Node currentNode = allNodes[current];
+
+        // Trace back from end node to start node
         while (currentNode != null)
         {
             algoPath.Add(currentNode.Position);
-            currentNode = currentNode.Parent;
+            currentNode = currentNode.Parent; // Move to the parent node
         }
+
+        // Reverse the path to get it from start to end
         algoPath.Reverse();
     }
-
     List<HexTile.HexVisualData> Biome_data_to_hex(List<BiomeData> all_biomes)
     {
         List<HexTile.HexVisualData> rt_hex = new List<HexTile.HexVisualData>();
@@ -237,14 +280,6 @@ public class Pathfinder : MonoBehaviour
         return rt_hex;
     }
 
-    void _re_make_biome()
-    {
-        // Re-update the data. (to view changes)
-        planet.GenerateData();
-        List<BiomeData> biomes = planet.GetAllBiomes();
-        manager.SetVisualData(hexPositions.ToArray(), Biome_data_to_hex(biomes).ToArray());
-    }
-
     // Class to visualize the path.
     void _re_paint_path()
     {
@@ -253,39 +288,27 @@ public class Pathfinder : MonoBehaviour
         // Highlight start point
         HexVisualData startHexData = manager.GetVisualData(startPoint);
         startHexData.SetVisualOption(HexVisualData.HexVisualOption.Color);
-        startHexData.SetColor(Color.black);
+        startHexData.SetColor(Color.magenta); // Start point color
         manager.SetVisualData(startPoint, startHexData);
 
         // Highlight end point
         HexVisualData endHexData = manager.GetVisualData(endPoint);
         endHexData.SetVisualOption(HexVisualData.HexVisualOption.Color);
-        endHexData.SetColor(Color.black);
+        endHexData.SetColor(Color.magenta); // End point color
         manager.SetVisualData(endPoint, endHexData);
 
         // Highlight the path
         foreach (Vector2Int pathNode in algoPath)
         {
-            HexVisualData pathNodeData = manager.GetVisualData(pathNode);
-            pathNodeData.SetVisualOption(HexVisualData.HexVisualOption.Color);
-            pathNodeData.SetColor(Color.magenta);
-            manager.SetVisualData(pathNode, pathNodeData);
+            if(pathNode != startPoint && pathNode != endPoint) // Avoid recoloring the start/end points
+            {
+                HexVisualData pathNodeData = manager.GetVisualData(pathNode);
+                pathNodeData.SetVisualOption(HexVisualData.HexVisualOption.Color);
+                pathNodeData.SetColor(Color.cyan); // Path color
+                manager.SetVisualData(pathNode, pathNodeData);
+            }
         }
-
-        manager.DrawChunkInstanced(); // Update the grid visuals
-
-
-        // be advised that when changing the color or the material, you MUST set the hex visual option to "BaseTextures" or "Color" respectively so that the correct are visible.
-        // so if you change the color, you must set the visual option to "Color" and if you change the texture, you must set the visual option to "BaseTextures", if you do not do this, changing the color will have no effect if the visual option is set to "BaseTextures"
-
-        // you can change the visualdata by using the SetVisualData method of the GridManager class.
-        // something like this
-
-        //HexVisualData hexData = manager.GetVisualData(startPoint);
-
-        //hexData.SetVisualOption(HexVisualData.HexVisualOption.Color);
-
-        //manager.SetVisualData(startPoint, hexData);
-
+        manager.DrawChunkInstanced(); // This line will trigger the grid manager to update the visuals on the screen
     }
 
     void run_algo()
@@ -302,6 +325,14 @@ public class Pathfinder : MonoBehaviour
             if (log_out_ctr == 0)
                 Debug.Log("End Found");
         }
+    }
+
+    void _re_make_biome()
+    {
+        // Re-update the data. (to view changes)
+        planet.GenerateData();
+        List<BiomeData> biomes = planet.GetAllBiomes();
+        manager.SetVisualData(hexPositions.ToArray(), Biome_data_to_hex(biomes).ToArray());
     }
 
 
@@ -343,7 +374,6 @@ public class Pathfinder : MonoBehaviour
         {
             return new Vector2Int(int.Parse(parts[0].Trim()), int.Parse(parts[1].Trim()));
         }
-        return Vector2Int.zero; 
+        return Vector2Int.zero;
     }
 }
-
