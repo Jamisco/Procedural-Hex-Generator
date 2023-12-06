@@ -156,7 +156,7 @@ public class Pathfinder : MonoBehaviour
             }
         }
         // If the open set is empty and the end was not reached, there is no path
-    }
+    }//
 
     private void InitializeNodes()
     {

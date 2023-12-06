@@ -527,6 +527,9 @@ namespace Assets.Scripts.WorldMap
             SurfaceType surfaceType;
             float surface = 0;
 
+            Debug.Log($"[BiomeData] Coordinates: ({x}, {y}), Temp: {temp}, Precip: {precip}, Land: {land}, Ocean: {ocean}");
+
+
             if (ocean > land)
             {
                 surfaceType = SurfaceType.Marine;
