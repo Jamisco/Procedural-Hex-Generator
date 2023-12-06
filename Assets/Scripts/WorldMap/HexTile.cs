@@ -289,7 +289,7 @@ namespace Assets.Scripts.WorldMap
         /// <returns></returns>
         public static Vector2Int GetGridCoordinate(Vector3 localPosition, HexSettings hexSettings)
         {
-            ExtensionMethods.ClearLog();
+            //ExtensionMethods.ClearLog();
             
             Vector3Int gridCoordinate = Vector3Int.zero;
 
@@ -484,7 +484,7 @@ namespace Assets.Scripts.WorldMap
                         {
                             // based on the grid position of the hex, we can calculate the index of the hex in the data list... assuming it is in order of (0, 0) (0, 1) (0, 2) ... (mapSize.x, mapSize.y)
 
-                            int index = (z * MapSize.x) + x;
+                            int index = (x * MapSize.y) + z;
                             
                             hc.VisualData = data.ElementAtOrDefault(index);
                         }
@@ -791,9 +791,9 @@ namespace Assets.Scripts.WorldMap
             public Color HexColor { get; private set; }
             public Texture2D BaseTexture { get; private set; }
             public Texture2D OverlayTexture1 { get; private set; }
-            public float WeatherLerp { get; set; }
+            public float WeatherLerp { get; private set; }
 
-            public HexVisualOption VisualOption { get; set; }
+            public HexVisualOption VisualOption { get; private set; }
             public enum HexVisualOption { Color, BaseTextures, AllTextures }
 
             // These constructores are set up in such a way that it forces the use to use either a HexColor or a texture
@@ -895,7 +895,9 @@ namespace Assets.Scripts.WorldMap
                 switch (VisualOption)
                 {
                     case HexVisualOption.Color:
-                        hash = HashCode.Combine(VisualOption, WeatherLerp);
+                        hash = 
+                               HashCode
+                               .Combine(HexColor, VisualOption,WeatherLerp);
                         break;
                     default:
                         

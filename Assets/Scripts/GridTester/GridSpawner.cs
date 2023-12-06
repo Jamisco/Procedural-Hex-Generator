@@ -1,5 +1,6 @@
 using Assets.Scripts.Miscellaneous;
 using Assets.Scripts.WorldMap;
+using Assets.Scripts.WorldMap.Biosphere;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEditor;
@@ -19,44 +20,48 @@ public class GridSpawner : MonoBehaviour
     public PlanetGenerator planet;
     public GridData gridData;
 
-    public BoxCollider boxCollider;
-
     Vector2Int mapSize;
 
     public bool useColor = true;
+
+
+    public Vector2Int startPoint;
+    public Vector2Int endPoint;
+
     private void Awake()
     {
-        
+
     }
     void Start()
     {
         Begin();
     }
 
+
+
     private void Update()
     {
         OnMouseClick();
-        //UpdateBounds();
-        //HighlightOnHover();
-        DisableUnseenChunks();
     }
 
-    void UpdateBounds()
+
+    public void GetData()
     {
-        manager.GetBoxCollider(ref boxCollider);
-        UpdateBounds();
+        Biomes startData = planet.GetBiomeData(startPoint).Biome;
+
+        int weight = SurfaceBody.GetWeight(startData);
+
     }
 
     void Begin()
     {
         manager = GetComponent<GridManager>();
         planet = GetComponent<PlanetGenerator>();
-        boxCollider = GetComponent<BoxCollider>();
 
         List<HexVisualData> visualData;
 
         mapSize = gridData.GridSize;
-        
+
         planet.MainPlanet.PlanetSize = gridData.GridSize;
         planet.GenerateData();
 
@@ -64,7 +69,7 @@ public class GridSpawner : MonoBehaviour
 
         manager.InitializeGrid(gridData, visualData);
 
-       // manager.GetBoxCollider(ref boxCollider);
+        // manager.GetBoxCollider(ref boxCollider);
 
         manager.GenerateGrid();
         //SetHexVisualData();
@@ -77,9 +82,9 @@ public class GridSpawner : MonoBehaviour
 
         List<BiomeData> datas = planet.GetAllBiomes();
 
-        for(int x = 0; x < mapSize.x; x++)
+        for (int x = 0; x < mapSize.x; x++)
         {
-            for(int y = 0; y < mapSize.y; y++)
+            for (int y = 0; y < mapSize.y; y++)
             {
                 Vector2Int pos = new Vector2Int(x, y);
 
@@ -108,7 +113,7 @@ public class GridSpawner : MonoBehaviour
     {
         HexVisualData hData = new HexVisualData(data.BiomeColor,
                               data.WeatherTexture, null, 0f);
-        
+
         if (useColor)
         {
             hData.SetVisualOption(HexVisualOption.Color);
@@ -137,8 +142,8 @@ public class GridSpawner : MonoBehaviour
             {
                 return;
             }
-            
-            newData = 
+
+            newData =
                 manager.GetHexDataAtPosition(mousePos);
 
             if (newData.IsNullOrEmpty())
@@ -147,12 +152,21 @@ public class GridSpawner : MonoBehaviour
             }
 
             newData.Highlight();
+
+            BiomeData da = planet.GetBiomeData(newData.GridCoordinates);
+
+            Debug.Log("Clicked On Hex: " + newData.GridCoordinates.ToString() + " Biome: " + da.Biome.ToString());
         }
 
         if (Mouse.current.rightButton.wasPressedThisFrame)
         {
             mousePos = GetMousePosition();
-            
+
+            if(!manager.PositionInGrid(mousePos))
+            {
+                return;
+            }
+
             newData =
                manager.GetHexDataAtPosition(mousePos);
 
@@ -185,7 +199,7 @@ public class GridSpawner : MonoBehaviour
 
         newData.ActivateBorder();
         previousData = newData;
-        
+
         //Debug.Log("Hovering Over Hex: " + newData.GridCoordinates.ToString());
     }
 

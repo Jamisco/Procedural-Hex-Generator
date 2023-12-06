@@ -22,7 +22,7 @@ namespace Assets.Scripts.WorldMap.Biosphere
 
         // Since different surface types will use different gridvalues, those specific classes should be the one to implement this method
         public abstract BiomeData GetBiomeData(GridValues grid);
-        
+
         public virtual BiomeData GetBiomeData(Biomes biome)
         {
             try
@@ -34,9 +34,11 @@ namespace Assets.Scripts.WorldMap.Biosphere
 
                 return new BiomeData(biome);
             }
-            
+
         }
-       
+
+
+
         // the order and numbers of these biomes matter, do not change
         public enum Biomes
         {
@@ -51,10 +53,27 @@ namespace Assets.Scripts.WorldMap.Biosphere
             TropicalSeasonalForest = 8, // 8
             Polar = 9, // 9
             PolarDesert = 10, // 10
-            
+
             Ocean,
             Sea,
             Lake,
+        };
+
+        public static int GetWeight(Biomes biome)
+        {
+            int pos = (int)biome;
+
+            if(pos > 10)
+            {
+                return -1;
+            }
+
+            return BiomeWeight[pos];
+        }
+
+        private static int[] BiomeWeight = new int[]
+        {
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10
         };
 
         public int[] BiomeOrder = new int[]
@@ -71,10 +90,10 @@ namespace Assets.Scripts.WorldMap.Biosphere
             [SerializeField] private Color _biomeColor;
             [SerializeField] private Texture2D _seasonTexture;
             [SerializeField] private Texture2D _weatherTexture;
-            public Biomes Biome { get => _biome;}
-            public Color BiomeColor { get => _biomeColor;  }
+            public Biomes Biome { get => _biome; }
+            public Color BiomeColor { get => _biomeColor; }
             public Texture2D SeasonTexture { get => _seasonTexture; }
-            public Texture2D WeatherTexture { get => _weatherTexture;}
+            public Texture2D WeatherTexture { get => _weatherTexture; }
 
             public BiomeData(Biomes aBiome)
             {
