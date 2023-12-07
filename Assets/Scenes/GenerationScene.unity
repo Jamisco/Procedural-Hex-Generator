@@ -1338,8 +1338,8 @@ MonoBehaviour:
     MainMaterial: {fileID: 2100000, guid: 1ce1c2e14903de741ae3026f3330e7bb, type: 2}
     InstanceMaterial: {fileID: 2100000, guid: 876cd32450d0f1a48835980ee51786b2, type: 2}
     Sprites_Default: {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
-  startPoint: {x: 10, y: 20}
-  endPoint: {x: 30, y: 50}
+  startPoint: {x: 10, y: 40}
+  endPoint: {x: 30, y: 60}
 --- !u!4 &674790983
 Transform:
   m_ObjectHideFlags: 0
@@ -2665,8 +2665,9 @@ MonoBehaviour:
     MainMaterial: {fileID: 2100000, guid: 1ce1c2e14903de741ae3026f3330e7bb, type: 2}
     InstanceMaterial: {fileID: 2100000, guid: 876cd32450d0f1a48835980ee51786b2, type: 2}
     Sprites_Default: {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
-  boxCollider: {fileID: 0}
   useColor: 1
+  startPoint: {x: 0, y: 0}
+  endPoint: {x: 0, y: 0}
 --- !u!4 &1453448159
 Transform:
   m_ObjectHideFlags: 0
